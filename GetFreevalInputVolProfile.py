@@ -23,8 +23,13 @@ import re
 
 PathTMS = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associates, Inc',
                          'Documents', '23746 - I-83 TSMO','TMS-VolProfile')
+
+
+PathKeyValFi = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associates, Inc',
+                         'Documents', '23746 - I-83 TSMO','AADT-I-83 V2.xlsx')
 #Get the Key value pair for NB TMS files
-NB_KeyVal = pd.read_excel(os.path.join(PathTMS,'NB-TMS','NB-TMS-KeyValuePair.xlsx'))
+NB_KeyVal = pd.read_excel(PathKeyValFi, 'SB-NB-KeyValue', skiprows = 2, usecols = 'C:E',nrows=16)
+
 os.chdir(PathTMS)     
 os.getcwd()
 
@@ -106,7 +111,7 @@ Pathfile = os.path.join(PathTMS,'NB-TMS',NB_KeyVal.TMS_File_Name[i])
 #Get Volume Profile for SB
 ########################################################################################################################
 #Get the Key value pair for SB TMS files
-SB_KeyVal = pd.read_excel(os.path.join(PathTMS,'SB-TMS','SB-TMS-KeyValuePair.xlsx'))
+SB_KeyVal = pd.read_excel(PathKeyValFi, 'SB-NB-KeyValue', skiprows = 23, usecols = 'C:E',nrows=20)
 SBDat = pd.DataFrame()
 for indx,row in SB_KeyVal.iterrows():
     if indx ==0:

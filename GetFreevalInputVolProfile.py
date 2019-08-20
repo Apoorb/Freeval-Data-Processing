@@ -25,8 +25,13 @@ PathTMS = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associate
                          'Documents', '23746 - I-83 TSMO','TMS-VolProfile')
 
 
+#PathKeyValFi = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associates, Inc',
+#                         'Documents', '23746 - I-83 TSMO','AADT-I-83 V2.xlsx')
+
+#No-Build
 PathKeyValFi = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associates, Inc',
-                         'Documents', '23746 - I-83 TSMO','AADT-I-83 V2.xlsx')
+                         'Documents', '23746 - I-83 TSMO','AADT-I-83 No Build.xlsx')
+
 #Get the Key value pair for NB TMS files
 NB_KeyVal = pd.read_excel(PathKeyValFi, 'SB-NB-KeyValue', skiprows = 2, usecols = 'C:E',nrows=16)
 
@@ -96,7 +101,7 @@ NBDat.sum(axis=0)
 NBDat.index = pd.to_datetime(NBDat.index)
 DummyIndex = NBDat.index[-1]+pd.Timedelta('1H')
 NBDat.loc[DummyIndex,:]=-99999
-
+#Create additional intervals at 15 mins
 NBDat2 = NBDat.resample('15T',convention='start').ffill()
 NBDat2.drop(index=DummyIndex,inplace=True)
 NBDat2.index = pd.to_datetime(NBDat2.index).strftime('%H:%M')
@@ -135,12 +140,12 @@ SBDat2.index = pd.to_datetime(SBDat2.index).strftime('%H:%M')
 
 
 
-NBDat2.to_excel(os.path.join(PathTMS,'NBVolProflie.xlsx'))
-SBDat2.to_excel(os.path.join(PathTMS,'SBVolProflie.xlsx'))
+NBDat2.to_excel(os.path.join(PathTMS,'NoBuild-NBVolProflie.xlsx'))
+SBDat2.to_excel(os.path.join(PathTMS,'NoBuild-SBVolProflie.xlsx'))
 
-OutFiPa = os.path.join(PathTMS,'NBVolProflie.csv')
+OutFiPa = os.path.join(PathTMS,'NoBuild-NBVolProflie.csv')
 #subprocess.Popen([OutFiPa],shell=True)  
-OutFiPa = os.path.join(PathTMS,'SBVolProflie.csv')
+OutFiPa = os.path.join(PathTMS,'NoBuild-SBVolProflie.csv')
 #subprocess.Popen([OutFiPa],shell=True)  
 
 

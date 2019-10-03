@@ -30,7 +30,7 @@ PathTMS = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associate
 
 #No-Build
 PathKeyValFi = os.path.join(os.path.expanduser('~'),'OneDrive - Kittelson & Associates, Inc',
-                         'Documents', '23746 - I-83 TSMO','AADT-I-83 No Build.xlsx')
+                         'Documents', '23746 - I-83 TSMO','AADT-I-83-Build-Revised---PM.xlsx')
 
 #Get the Key value pair for NB TMS files
 NB_KeyVal = pd.read_excel(PathKeyValFi, 'SB-NB-KeyValue', skiprows = 2, usecols = 'C:E',nrows=16)
@@ -141,11 +141,11 @@ SBDat2.index = pd.to_datetime(SBDat2.index).strftime('%H:%M')
 
 
 NBDat2.to_excel(os.path.join(PathTMS,'NoBuild-NBVolProflie.xlsx'))
-SBDat2.to_excel(os.path.join(PathTMS,'NoBuild-SBVolProflie.xlsx'))
+SBDat2.to_excel(os.path.join(PathTMS,'Build-PM-SBVolProflie.xlsx'))
 
 OutFiPa = os.path.join(PathTMS,'NoBuild-NBVolProflie.csv')
 #subprocess.Popen([OutFiPa],shell=True)  
-OutFiPa = os.path.join(PathTMS,'NoBuild-SBVolProflie.csv')
-#subprocess.Popen([OutFiPa],shell=True)  
+OutFiPa = os.path.join(PathTMS,'Build-PM-SBVolProflie.xlsx')
+subprocess.Popen([OutFiPa],shell=True)  
 
 

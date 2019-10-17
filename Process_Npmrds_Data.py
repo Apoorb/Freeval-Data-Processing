@@ -100,7 +100,10 @@ Dat3 = Dat3.swaplevel(0,1,axis=1)
 mux = pd.MultiIndex.from_product([['EASTBOUND','WESTBOUND'],['Friday','Saturday','Sunday','Monday'],
                                   list(All_Routes_Nm.values())+['Vsep','Total_TT']], names=['Dir','Day','Seg'])
 Dat3 = Dat3.reindex(mux,axis=1)
-
+dir1= 'WESTBOUND'
+day = 'Sunday'
+idx= pd.IndexSlice
+Dat3.loc[:,idx[dir1,day,:]]  = Dat3.loc[:,idx[dir1,day,:]].fillna(method ='ffill')
 
 OutFi= 'Speed_Processed.xlsx'
 writer = pd.ExcelWriter(OutFi)

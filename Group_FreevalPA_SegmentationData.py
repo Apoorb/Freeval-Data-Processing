@@ -48,7 +48,7 @@ def GetAADTsummary(FileNm):
     ReturnDat2 = pd.DataFrame(ReturnDat2).reset_index()
     ReturnDat2.columns = ['Name','CUR_AADT','ObsFreq']
     ReturnDat2.loc[:,'UniqNo'] = np.hstack(ReturnDat2.groupby(['Name'])['CUR_AADT'].apply(lambda x: np.arange(1,len(x)+1)).values)
-    ReturnDat2.loc[:,'FreevalSeg'] =  (ReturnDat2.Name - np.min(ReturnDat2.Name)).apply(lambda x: "Seg{}".format(x))
+    ReturnDat2.loc[:,'FreevalSeg'] =  (ReturnDat2.Name - np.min(ReturnDat2.Name)).apply(lambda x: "Seg{}".format(x+1))
     ReturnDat2.set_index(['FreevalSeg','UniqNo'],inplace=True)  
     RetDict = {'Ret1': ReturnDat, 'Ret2':ReturnDat2}
     return(RetDict)
@@ -119,7 +119,16 @@ for _, row in FileData.iterrows():
     Tp2.rename(columns = {0:"AADT"},inplace=True)
     Tp2 = Tp2.merge(TempData,left_on= ['Name','AADT'],
               right_on =['Name','CUR_AADT'],how ='left')
-    Tp2.sort_values('FreevalSeg',inplace=True)
+    Tp2.sort_values("Name")
+    Tp2.reset_index(inplace=True,drop=True)
+    Tp2.UniqNo = 1
+    Tp2.loc[:,'AADT_shift'] = Tp2.AADT.shift(1) #---------@@@@@@@-----
+    Tp2.loc[:,'DeltaPrevObs'] = Tp2.AADT.diff(-1)
+    Tp2.loc[:,'DeltaNextObs'] = Tp2.loc[:,'DeltaPrevObs'].shift(-1)
+    Tp2.loc[:,'DeltaPrevObs'] = Tp2.loc[:,'DeltaPrevObs'] * -1
+    mask = ((Tp2.DeltaPrevObs>20000) & (Tp2.DeltaNextObs>20000)) |((Tp2.DeltaPrevObs<-20000) & (Tp2.DeltaNextObs<-20000))
+
+    Tp2.loc[Tp2.index[mask],'AADT'] = Tp2.loc[Tp2.index[mask],'AADT_shift']
     PlotlyDebugFigs(Tp2, row['SheetName'],"ProcessedData/Fig/Clean_AADT/Cl_")
     CountData = Tp2.groupby(['Name'])['CUR_AADT'].count().values
     NumDuplicates2 = np.append(NumDuplicates2,CountData)

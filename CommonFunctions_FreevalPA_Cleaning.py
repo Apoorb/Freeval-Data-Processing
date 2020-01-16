@@ -50,7 +50,7 @@ def GetVariableSummary(FileNm, Features =['CUR_AADT']):
     return(RetDict)
 
 
-def GetProbData(data):
+def GetProbData(data, feature, FiName):
     '''
     Parameters
     ----------
@@ -63,9 +63,7 @@ def GetProbData(data):
     ProbRows : Rows with issue
 
     '''
-    #PlotlyDebugFigs(DatDict['Ret2'], row['SheetName'],"ProcessedData/Fig/{}/".format(feature))
     temp = np.squeeze(data.loc[:,feature].apply(lambda x: len(x)).values)
-    # NumDuplicates = np.append(NumDuplicates,temp)
     if(np.max(temp)>=2):
         #NumVal = Number of duplicates. Can be 1 meaning no duplicate
         data.loc[:,'NumVal'] = data.loc[:,feature].apply(lambda x: len(x)).values
@@ -73,7 +71,7 @@ def GetProbData(data):
         ProbRows = data.loc[(data.NumVal >=2),['Name',feature]]
         ProbRows.loc[:,"FeatureNm"] = feature
         ProbRows.loc[:,"NumDuplicates"] = ProbRows.loc[:,feature].apply(lambda x: len(x))
-        ProbRows.loc[:,'FileName'] = row['FileName']
+        ProbRows.loc[:,'FileName'] = FiName
         return(ProbRows)
         
 
@@ -123,32 +121,33 @@ def CleanAADT_2ndLevel(data):
     return(AADT)
 
 
-def CleanCityCode_1stLevel(TempData):
+def CleanCityCode_1stLevel(TempData, feature):
     '''
     Parameters
     ----------
     Temp : pd.DataFrame
         RetDict[CTY_CODE]['Ret2'].
+    Made it generic for other features
     Returns
     -------
     Single AADT values from multiple values.
 
     '''
-    Tp2 = TempData.groupby(['Name']).apply(CleanCityCode_2ndLevel).reset_index()
-    Tp2.rename(columns = {0:"CTY_CODE"},inplace=True)
-    Tp2['CTY_CODE'] = Tp2['CTY_CODE'].fillna(method ='bfill')
-    Tp2 = Tp2.merge(TempData,left_on= ['Name','CTY_CODE'],
-              right_on =['Name','CTY_CODE'],how ='left')
+    Tp2 = TempData.groupby(['Name']).apply(CleanCityCode_2ndLevel,feature).reset_index()
+    Tp2.rename(columns = {0:feature},inplace=True)
+    Tp2[feature] = Tp2[feature].fillna(method ='bfill')
+    Tp2 = Tp2.merge(TempData,left_on= ['Name',feature],
+              right_on =['Name',feature],how ='left')
     Tp2.sort_values("Name")
     Tp2.reset_index(inplace=True,drop=True)
     Tp2.UniqNo = 1
     #Debug_Dat = TempData.groupby(['Name'])['ObsFreq']
     #data = Debug_Dat.get_group(100000830078)
-    CountData = Tp2.groupby(['Name'])['CTY_CODE'].count().values
+    CountData = Tp2.groupby(['Name'])[feature].count().values
     # Tp2 = Tp2[['Name','CTY_CODE']]
     return({'OutDat' : Tp2, 'CountDat': CountData})
 
-def CleanCityCode_2ndLevel(data):
+def CleanCityCode_2ndLevel(data, feature):
     '''
     Parameters
     ----------
@@ -160,10 +159,10 @@ def CleanCityCode_2ndLevel(data):
 
     '''
     if(np.std(data.ObsFreq) ==0) & (data.ObsFreq.size>1):
-        CtyCode = np.nan
+        Feature_val = np.nan
     else:
-        CtyCode = data.loc[data.ObsFreq==max(data.ObsFreq),'CTY_CODE'].values[0]
-    return(CtyCode)
+        Feature_val = data.loc[data.ObsFreq==max(data.ObsFreq),feature].values[0]
+    return(Feature_val)
 
 
 

@@ -46,7 +46,7 @@ x1.parse().columns
 # NumDuplicates = np.empty(0)
 ProbDat = pd.DataFrame()
 NumRowsDat = pd.DataFrame()
-Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE']
+Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE','DISTRICT_N','JURIS', 'DIR_IND', 'FAC_TYPE','TOTAL_WIDT','LANE_CNT']
 Features_RetDict = GetVariableSummary('I_80_EB_1.xls',Features)
 
 
@@ -59,7 +59,7 @@ for _, row in FileData.iterrows():
     #For each feature get the # of duplicates 
     for feature in Features:
         DatDict = Features_RetDict[feature]
-        ProbRows = GetProbData(DatDict['Ret1'])
+        ProbRows = GetProbData(DatDict['Ret1'],feature,row['FileName'])
         ProbDat = pd.concat([ProbDat,ProbRows])
 #****************************************************************************************************************************
 
@@ -74,7 +74,19 @@ ProbDatSum = ProbDatSum.reset_index()
 ProbDict = {}
 for feature in Features:
     ProbDict[feature]  = ProbDatSum[ProbDatSum.FeatureNm==feature]
-ProbDict['CUR_AADT'].Tot.sum()
+    
+#Rough
+ProbDict['DIR_IND'].Tot.sum()
+ProbDict['FAC_TYPE'].Tot.sum()
+ProbDict['TOTAL_WIDT'].Tot.sum()
+ProbDict['LANE_CNT'].Tot.sum()
+
+Prob_Dir = ProbDat[~ProbDat.DIR_IND.isna()]
+Prob_FAC_TYPE = ProbDat[~ProbDat.FAC_TYPE.isna()]
+Prob_TOTAL_WIDT = ProbDat[~ProbDat.TOTAL_WIDT.isna()]
+Prob_LANE_CNT = ProbDat[~ProbDat.LANE_CNT.isna()]
+On_1 = ['FileName','Name']
+Prob_LANE_CNT =Prob_LANE_CNT.merge(Prob_TOTAL_WIDT, on = On_1, how ='inner')
 #****************************************************************************************************************************
 
 
@@ -91,32 +103,75 @@ ProbDict['CUR_AADT'].Tot.sum()
 # Clean the data and check for things like local hills and valleys in the AADT data
 NumDuplicates_AADT = np.empty(0)
 NumDuplicates_CTY_Code = np.empty(0)
-Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE']
+NumDuplicates_District = np.empty(0)
+
+CleanData_Dict = {}
+Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE','DISTRICT_N','JURIS', 'DIR_IND', 'FAC_TYPE']
 FinAADT_Dat = pd.DataFrame()
+FinStRt_Dat = pd.DataFrame()
+FinDir_Dat  =pd.DataFrame()
+FinFacType_Dat=pd.DataFrame()
+Fin_Fin_data = pd.DataFrame({'Name':[]})
 #****************************************************************************************************************************
 for _, row in FileData.iterrows():
     MainData = GetVariableSummary(row['FileName'],Features)
     for feature in Features:
         if(feature == "CUR_AADT"):
             TempData = MainData["CUR_AADT"]["Ret2"].reset_index()
-            CleanDat_AADT = CleanAADT_1stLevel(TempData)
+            Tp2 = CleanAADT_1stLevel(TempData)
             if(row['FileName'] in ProbDict['CUR_AADT'].FileName.values):
-                PlotlyDebugFigs_2(TempData,CleanDat_AADT['OutDat'], row['SheetName'],feature, "ProcessedData/Fig/Clean_AADT/Cl_")
-            NumDuplicates_AADT = np.append(NumDuplicates_AADT,CleanDat_AADT['CountDat'])
-            FinAADT_Dat = pd.concat([FinAADT_Dat, CleanDat_AADT['OutDat']])
+                ''
+                #PlotlyDebugFigs_2(TempData,Tp2['OutDat'], row['SheetName'],feature, "ProcessedData/Fig/Clean_AADT/Cl_")
+            NumDuplicates_AADT = np.append(NumDuplicates_AADT,Tp2['CountDat'])
+            FinAADT_Dat = pd.concat([FinAADT_Dat, Tp2['OutDat']])
+            CleanData_Dict[feature] = Tp2['OutDat']
         elif(feature =="CTY_CODE"):
             TempData = MainData['CTY_CODE']["Ret2"].reset_index()
-            CleanDat_CITY_CODE = CleanCityCode_1stLevel(TempData)
+            Tp2 = CleanCityCode_1stLevel(TempData, feature)
+            CleanData_Dict[feature] = Tp2['OutDat']
             if(row['FileName'] in ProbDict['CTY_CODE'].FileName.values):
-                #PlotlyDebugFigs_2(TempData,CleanDat_CITY_CODE['OutDat'], row['SheetName'],feature, "ProcessedData/Fig/Clean_CtyCode/Cl_")
+                #PlotlyDebugFigs_2(TempData,Tp2['OutDat'], row['SheetName'],feature, "ProcessedData/Fig/Clean_CtyCode/Cl_")
                 ""
-            NumDuplicates_CTY_Code = np.append(NumDuplicates_CTY_Code,CleanDat_CITY_CODE['CountDat'])
+            NumDuplicates_CTY_Code = np.append(NumDuplicates_CTY_Code,Tp2['CountDat'])
+        elif(feature =="DISTRICT_N"):
+            TempData = MainData['DISTRICT_N']["Ret2"].reset_index()
+            Tp2 = CleanCityCode_1stLevel(TempData, feature)
+            CleanData_Dict[feature] = Tp2['OutDat']
+            if(row['FileName'] in ProbDict['DISTRICT_N'].FileName.values):
+                ''
+                #PlotlyDebugFigs_2(TempData,Tp2['OutDat'], row['SheetName'],feature, "ProcessedData/Fig/Clean_District/Cl_")
+            NumDuplicates_District = np.append(NumDuplicates_District,Tp2['CountDat'])
+        elif(feature == "DIR_IND"):
+            TempData = MainData['DIR_IND']["Ret2"].reset_index()
+            CleanData_Dict[feature] = TempData[TempData.DIR_IND!='B'] # ProbDat shows that the only issue with Dir in "B". Just remove it
+            FinDir_Dat = pd.concat([FinDir_Dat,CleanData_Dict[feature]])
+        elif(feature == "FAC_TYPE"):
+            TempData = MainData['FAC_TYPE']["Ret2"].reset_index()
+            CleanData_Dict[feature] = TempData.groupby('Name')['FAC_TYPE'].max().reset_index() # I manually check. We need to keep 2 and drop 1
+            FinFacType_Dat = pd.concat([FinFacType_Dat,CleanData_Dict[feature]])
         else: ""
-    # OutFi = "ProcessedData/Prcsd_"+row['SheetName']+'.xlsx'
-    # writer=pd.ExcelWriter(OutFi)
-    # CleanDat['OutDat'].to_excel(writer, row['SheetName'],na_rep='-')
-    # writer.save() 
+            #No processing needed
+        if feature not in ['ST_RT_NO','JURIS']:
+            CleanData_Dict[feature] = CleanData_Dict[feature][['Name',feature]]
+            Fin_Fin_data = Fin_Fin_data.merge(CleanData_Dict[feature],on="Name", how ='right')
+    TempData1 = MainData['ST_RT_NO']["Ret2"].reset_index()
+    TempData2 = MainData['JURIS']["Ret2"].reset_index()
+    TempData1 = TempData1[['Name','ST_RT_NO']]
+    TempData2 = TempData2[['Name','JURIS']]
+    l_on = ['Name']
+    TempData1 = TempData1.merge(TempData2, on = l_on, how= 'inner')
+    FinStRt_Dat = pd.concat([FinStRt_Dat,TempData1])
 
-FinAADT_Dat.shape
+    Fin_Fin_data = Fin_Fin_data.merge(TempData1, on = l_on, how= 'inner')
+
+    OutFi = "ProcessedData/Prcsd_"+row['SheetName']+'.xlsx'
+    writer=pd.ExcelWriter(OutFi)
+    Fin_Fin_data.to_excel(writer, row['SheetName'],na_rep='-')
+    writer.save() 
+
+FinFacType_Dat.shape
+FinDir_Dat.shape
+FinDir_Dat.groupby('DIR_IND').count()
 unique, counts = np.unique(NumDuplicates_AADT, return_counts=True)
 unique2, counts2 = np.unique(NumDuplicates_CTY_Code, return_counts=True)
+unique3, counts3 = np.unique(NumDuplicates_District, return_counts=True)

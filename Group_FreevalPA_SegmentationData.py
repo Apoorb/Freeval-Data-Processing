@@ -3,6 +3,7 @@
 Created on Thu Jan  9 08:44:45 2020
 
 @author: abibeka
+# Clean the AADT data to get single values for AADT
 """
 
 
@@ -23,6 +24,7 @@ import glob
 from plotly.offline import plot
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 
 #****************************************************************************************************************************
 os.chdir(r'C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents\Passive Projects\Freeval-PA\Intersected_Tables_XLS')
@@ -38,12 +40,15 @@ FileData.reset_index(drop=True,inplace=True)
 
 #****************************************************************************************************************************
 def GetAADTsummary(FileNm):
+    '''
+    Get the AADTA data. Find duplicates
+    '''
     x1 = pd.ExcelFile(FileNm)
     sheetNm = x1.sheet_names[0]
     dat = x1.parse(sheetNm)
     ReturnDat = pd.Series(dat.groupby(['Name'])['CUR_AADT'].unique())
     ReturnDat = pd.DataFrame(ReturnDat)
-    ReturnDat.loc[:,'AllVals'] = pd.Series(dat.groupby(['Name'],as_index=False)['CUR_AADT'].apply(list))
+    # ReturnDat.loc[:,'AllVals'] = pd.Series(dat.groupby(['Name'],as_index=False)['CUR_AADT'].apply(list))
     ReturnDat2 = dat[['Name','CUR_AADT']].groupby(['Name','CUR_AADT'],as_index=False).size()
     ReturnDat2 = pd.DataFrame(ReturnDat2).reset_index()
     ReturnDat2.columns = ['Name','CUR_AADT','ObsFreq']
@@ -69,6 +74,25 @@ def PlotlyDebugFigs(Dat_Plot, SheetNm,OutPath = 'ProcessedData/Fig/Junk/'):
     fig.update_layout(barmode='group', xaxis_tickangle=-45)
     plot(fig,filename=OutPath+"AADT_{}.html".format(SheetNm), auto_open=False)
     return()
+
+def PlotlyDebugFigs_2(Dat_Plot_Pre, Dat_Plot_Post, SheetNm,OutPath = 'ProcessedData/Fig/Junk/'):
+    '''
+    Draw plotly figures based on Dat_Plot
+    '''
+    fig = make_subplots(rows =2, cols =1, shared_xaxes=True,
+                        subplot_titles=("Before {}".format(SheetNm),"After {}".format(SheetNm)))
+    for grp ,data in enumerate([Dat_Plot_Pre, Dat_Plot_Post]):
+        if grp == 0:
+            Legend1 = "Before"
+        else: Legend1 = "After"
+        for UnqNo, Label in enumerate(["1st AADT and Freq","2nd AADT and Freq","3rd AADT and Freq"]):
+            dat_sub = data[data.UniqNo== UnqNo + 1]
+            fig.add_trace(go.Bar(name = Label, x=dat_sub["FreevalSeg"], y=dat_sub["CUR_AADT"], text = dat_sub["ObsFreq"],legendgroup=Legend1),row=grp+1,col=1)
+        # Here we modify the tickangle of the xaxis, resulting in rotated labels.
+    fig.update_layout(barmode='group', xaxis_tickangle=-45)
+    plot(fig,filename=OutPath+"AADT_{}.html".format(SheetNm), auto_open=False)
+    return()
+
 #****************************************************************************************************************************
 
 AADT_SumDat = pd.DataFrame()
@@ -79,24 +103,35 @@ ProbDat = pd.DataFrame()
 for _, row in FileData.iterrows():
     RetDict = GetAADTsummary(row['FileName'])
     RetDict['Ret2'] = RetDict['Ret2'].reset_index()  
-    PlotlyDebugFigs(RetDict['Ret2'], row['SheetName'],"ProcessedData/Fig/AADT/")
+    #PlotlyDebugFigs(RetDict['Ret2'], row['SheetName'],"ProcessedData/Fig/AADT/")
     RetDict['Ret2'].loc[:,"SiteName"] = row['SheetName']
     temp = np.squeeze(RetDict['Ret1'].CUR_AADT.apply(lambda x: len(x)).values)
     NumDuplicates = np.append(NumDuplicates,temp)
-    if(np.max(temp)==3):
+    if(np.max(temp)>=3):
         RetDict['Ret1'].loc[:,'NumVal'] = RetDict['Ret1'].CUR_AADT.apply(lambda x: len(x)).values
         RetDict['Ret1'].reset_index(inplace=True)
-        ProbRows = RetDict['Ret1'].loc[(RetDict['Ret1'].NumVal ==3),['Name','CUR_AADT']]
+        ProbRows = RetDict['Ret1'].loc[(RetDict['Ret1'].NumVal >=3),['Name','CUR_AADT']]
         ProbRows.loc[:,'FileName'] = row['FileName']
         ProbDat = pd.concat([ProbDat,ProbRows])
-unique, counts = np.unique(NumDuplicates, return_counts=True)
+
 unique
 counts
 counts.sum()
 
 RetDict['Ret2']
 RetDict['Ret1']
+
 def CleanAADT(data):
+    '''
+    Parameters
+    ----------
+    data : pd.DataFrame
+        RetDict['Ret2'].
+    Returns
+    -------
+    Single AADT values from multiple values.
+
+    '''
     if(np.std(data.ObsFreq) ==0):
         AADT = data.CUR_AADT.max()
     else:
@@ -112,6 +147,7 @@ Tp2.merge(TempData,left_on= ['Name','AADT'],
 
 NumDuplicates2 = np.empty(0)
 
+# Clean the data and check for local hills and valleys in the data
 for _, row in FileData.iterrows():
     TempData = GetAADTsummary(row['FileName'])["Ret2"].reset_index()
     Tp2 = TempData.groupby(['Name']).apply(CleanAADT)
@@ -124,14 +160,21 @@ for _, row in FileData.iterrows():
     Tp2.UniqNo = 1
     Tp2.loc[:,'AADT_shift'] = Tp2.AADT.shift(1) #---------@@@@@@@-----
     Tp2.loc[:,'DeltaPrevObs'] = Tp2.AADT.diff(-1)
-    Tp2.loc[:,'DeltaNextObs'] = Tp2.loc[:,'DeltaPrevObs'].shift(-1)
+    Tp2.loc[:,'DeltaNextObs'] = Tp2.loc[:,'DeltaPrevObs'].shift(1)
     Tp2.loc[:,'DeltaPrevObs'] = Tp2.loc[:,'DeltaPrevObs'] * -1
     mask = ((Tp2.DeltaPrevObs>20000) & (Tp2.DeltaNextObs>20000)) |((Tp2.DeltaPrevObs<-20000) & (Tp2.DeltaNextObs<-20000))
-
+    Tp2.loc[Tp2.index[mask],'CUR_AADT'] = Tp2.loc[Tp2.index[mask],'AADT_shift']
     Tp2.loc[Tp2.index[mask],'AADT'] = Tp2.loc[Tp2.index[mask],'AADT_shift']
-    PlotlyDebugFigs(Tp2, row['SheetName'],"ProcessedData/Fig/Clean_AADT/Cl_")
+
+    
+    #PlotlyDebugFigs_2(RetDict['Ret2'],Tp2, row['SheetName'],"ProcessedData/Fig/Clean_AADT/Cl_")
     CountData = Tp2.groupby(['Name'])['CUR_AADT'].count().values
     NumDuplicates2 = np.append(NumDuplicates2,CountData)
+    Tp2 = Tp2[['Name','AADT']]
+    OutFi = "ProcessedData/Prcsd_"+row['SheetName']+'.xlsx'
+    writer=pd.ExcelWriter(OutFi)
+    Tp2.to_excel(writer, row['SheetName'],na_rep='-')
+    writer.save() 
 unique, counts = np.unique(NumDuplicates2, return_counts=True)
 
 

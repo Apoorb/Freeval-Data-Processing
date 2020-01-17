@@ -65,6 +65,7 @@ def GetProbData(data, feature, FiName):
     '''
     temp = np.squeeze(data.loc[:,feature].apply(lambda x: len(x)).values)
     if(np.max(temp)>=2):
+        #Plot here so that you don't have too many plots
         #NumVal = Number of duplicates. Can be 1 meaning no duplicate
         data.loc[:,'NumVal'] = data.loc[:,feature].apply(lambda x: len(x)).values
         data.reset_index(inplace=True)
@@ -90,7 +91,7 @@ def MergeMultipleData(MainData, Features):
 
     '''
     FinData = pd.DataFrame({'Name':[]})
-    l_on = ['Name']
+    l_on = ['Name'] 
     for feature in Features:
         TempData1 = MainData[feature]['Ret2'].reset_index()
         TempData1 = TempData1[['Name',feature]]
@@ -189,24 +190,40 @@ def CleanCityCode_2ndLevel(data, feature):
 
 
 
-def PlotlyDebugFigs(Dat_Plot, SheetNm,OutPath = 'ProcessedData/Fig/Junk/'):
+def PlotlyDebugFigs(Dat_Plot, MaxDuplicates, feature, SheetNm, OutPath = 'ProcessedData/Fig/Junk/'):
     '''
-    Draw plotly figures based on Dat_Plot
+    
+
+    Parameters
+    ----------
+    Dat_Plot : TYPE
+        Features_RetDict[feature]['Ret2']. Long data
+    MaxDuplicates : TYPE
+        DESCRIPTION. Maximum number of duplicates
+    SheetNm : TYPE
+        DESCRIPTION.
+    feature : TYPE
+        DESCRIPTION.
+    OutPath : TYPE, optional
+        DESCRIPTION. The default is 'ProcessedData/Fig/Junk/'.
+
+    Returns
+    -------
+    None.
+
     '''
-    dat_1stObs = Dat_Plot[Dat_Plot.UniqNo==1]
-    dat_2ndObs = Dat_Plot[Dat_Plot.UniqNo==2]
-    dat_3rdObs = Dat_Plot[Dat_Plot.UniqNo==3]
+    DuplicateData = {}
+    for i in range(1,MaxDuplicates+1):
+        DuplicateData[i] = Dat_Plot[Dat_Plot.UniqNo==i]
     fig = go.Figure(data = [
-        go.Bar(name = "1st AADT and Freq", x=dat_1stObs["FreevalSeg"], y=dat_1stObs["CUR_AADT"], text = dat_1stObs["ObsFreq"]),
-        go.Bar(name = "2nd AADT and Freq", x=dat_2ndObs["FreevalSeg"], y=dat_2ndObs["CUR_AADT"],text = dat_2ndObs["ObsFreq"]),
-        go.Bar(name = "3rd AADT and Freq", x=dat_3rdObs["FreevalSeg"], y=dat_3rdObs["CUR_AADT"], text = dat_3rdObs["ObsFreq"])
-        ])
+        go.Bar(name = "Duplicate {} {} and Freq".format(i,feature), x=DuplicateData[i]["FreevalSeg"], y=DuplicateData[i][feature], text = DuplicateData[i]["ObsFreq"])
+        for i in range(1,MaxDuplicates+1)])
     # Here we modify the tickangle of the xaxis, resulting in rotated labels.
     fig.update_layout(barmode='group', xaxis_tickangle=-45)
-    plot(fig,filename=OutPath+"AADT_{}.html".format(SheetNm), auto_open=False)
+    plot(fig,filename=OutPath+"{}_{}.html".format(feature, SheetNm), auto_open=False)
     return()
 
-def PlotlyDebugFigs_2(Dat_Plot_Pre, Dat_Plot_Post, SheetNm, feature ,OutPath = 'ProcessedData/Fig/Junk/'):
+def PlotlyDebugFigs_2(Dat_Plot_Pre, Dat_Plot_Post,MaxDuplicates, feature, SheetNm ,OutPath = 'ProcessedData/Fig/Junk/'):
     '''
     Draw plotly figures based on Dat_Plot
     '''
@@ -215,10 +232,14 @@ def PlotlyDebugFigs_2(Dat_Plot_Pre, Dat_Plot_Post, SheetNm, feature ,OutPath = '
     for grp ,data in enumerate([Dat_Plot_Pre, Dat_Plot_Post]):
         if grp == 0:
             Legend1 = "Before"
-        else: Legend1 = "After"
-        for UnqNo, Label in enumerate(["1st {} and Freq".format(feature),"2nd {} and Freq".format(feature),"3rd {} and Freq".format(feature)]):
-            dat_sub = data[data.UniqNo== UnqNo + 1]
-            fig.add_trace(go.Bar(name = Label, x=dat_sub["FreevalSeg"], y=dat_sub[feature], text = dat_sub["ObsFreq"],legendgroup=Legend1),row=grp+1,col=1)
+            for i in range(1,MaxDuplicates+1):
+                dat_sub = data[data.UniqNo==i]
+                fig.add_trace(go.Bar(name = "Duplicate {} {} and Freq".format(i,feature), x=dat_sub["FreevalSeg"], y=dat_sub[feature], text = dat_sub["ObsFreq"],legendgroup=Legend1),row=grp+1,col=1)
+        else: 
+            Legend1 = "After"
+            for UnqNo, Label in enumerate(["Duplicate 1 {} and Freq".format(feature),"Duplicate 2 {} and Freq".format(feature),"Duplicate 3 {} and Freq".format(feature)]):
+                dat_sub = data[data.UniqNo== UnqNo + 1]
+                fig.add_trace(go.Bar(name = Label, x=dat_sub["FreevalSeg"], y=dat_sub[feature], text = dat_sub["ObsFreq"],legendgroup=Legend1),row=grp+1,col=1)
         # Here we modify the tickangle of the xaxis, resulting in rotated labels.
     fig.update_layout(barmode='group', xaxis_tickangle=-45)
     plot(fig,filename=OutPath+"{}_{}.html".format(feature, SheetNm), auto_open=False)

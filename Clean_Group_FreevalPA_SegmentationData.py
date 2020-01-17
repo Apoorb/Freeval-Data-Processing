@@ -19,6 +19,7 @@ from CommonFunctions_FreevalPA_Cleaning import CleanAADT_2ndLevel
 from CommonFunctions_FreevalPA_Cleaning import CleanCityCode_1stLevel
 from CommonFunctions_FreevalPA_Cleaning import CleanCityCode_2ndLevel
 from CommonFunctions_FreevalPA_Cleaning import PlotlyDebugFigs_2
+from CommonFunctions_FreevalPA_Cleaning import MergeMultipleData
 
 
 #1 Get all the files. Store file and sheetname in a dataframe. Make sure 1 sheet per file
@@ -46,7 +47,9 @@ x1.parse().columns
 # NumDuplicates = np.empty(0)
 ProbDat = pd.DataFrame()
 NumRowsDat = pd.DataFrame()
-Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE','DISTRICT_N','JURIS', 'DIR_IND', 'FAC_TYPE','TOTAL_WIDT','LANE_CNT']
+Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE','DISTRICT_N','JURIS', 'DIR_IND',
+            'FAC_TYPE','TOTAL_WIDT','LANE_CNT','DIVSR_TYPE','DIVSR_WIDT','TRAF_RT_NO','TRAF_RT__1'
+            ,'URBAN_RURA']
 Features_RetDict = GetVariableSummary('I_80_EB_1.xls',Features)
 
 
@@ -85,6 +88,12 @@ Prob_Dir = ProbDat[~ProbDat.DIR_IND.isna()]
 Prob_FAC_TYPE = ProbDat[~ProbDat.FAC_TYPE.isna()]
 Prob_TOTAL_WIDT = ProbDat[~ProbDat.TOTAL_WIDT.isna()]
 Prob_LANE_CNT = ProbDat[~ProbDat.LANE_CNT.isna()]
+
+Prob_DIVSR_TYPE = ProbDat[~ProbDat.DIVSR_TYPE.isna()]
+Prob_DIVSR_WIDT = ProbDat[~ProbDat.DIVSR_WIDT.isna()]
+Prob_TRAF_RT_NO = ProbDat[~ProbDat.TRAF_RT_NO.isna()]
+
+
 On_1 = ['FileName','Name']
 Prob_LANE_CNT =Prob_LANE_CNT.merge(Prob_TOTAL_WIDT, on = On_1, how ='inner')
 #****************************************************************************************************************************
@@ -111,9 +120,9 @@ FinAADT_Dat = pd.DataFrame()
 FinStRt_Dat = pd.DataFrame()
 FinDir_Dat  =pd.DataFrame()
 FinFacType_Dat=pd.DataFrame()
-Fin_Fin_data = pd.DataFrame({'Name':[]})
 #****************************************************************************************************************************
 for _, row in FileData.iterrows():
+    Fin_Fin_data = pd.DataFrame({'Name':[]})
     MainData = GetVariableSummary(row['FileName'],Features)
     for feature in Features:
         if(feature == "CUR_AADT"):
@@ -154,13 +163,14 @@ for _, row in FileData.iterrows():
         if feature not in ['ST_RT_NO','JURIS']:
             CleanData_Dict[feature] = CleanData_Dict[feature][['Name',feature]]
             Fin_Fin_data = Fin_Fin_data.merge(CleanData_Dict[feature],on="Name", how ='right')
-    TempData1 = MainData['ST_RT_NO']["Ret2"].reset_index()
-    TempData2 = MainData['JURIS']["Ret2"].reset_index()
-    TempData1 = TempData1[['Name','ST_RT_NO']]
-    TempData2 = TempData2[['Name','JURIS']]
-    l_on = ['Name']
-    TempData1 = TempData1.merge(TempData2, on = l_on, how= 'inner')
-    FinStRt_Dat = pd.concat([FinStRt_Dat,TempData1])
+            TempData1 = MergeMultipleData()
+    # TempData1 = MainData['ST_RT_NO']["Ret2"].reset_index()
+    # TempData2 = MainData['JURIS']["Ret2"].reset_index()
+    # TempData1 = TempData1[['Name','ST_RT_NO']]
+    # TempData2 = TempData2[['Name','JURIS']]
+    # l_on = ['Name']
+    # TempData1 = TempData1.merge(TempData2, on = l_on, how= 'inner')
+    # FinStRt_Dat = pd.concat([FinStRt_Dat,TempData1])
 
     Fin_Fin_data = Fin_Fin_data.merge(TempData1, on = l_on, how= 'inner')
 

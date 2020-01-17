@@ -75,6 +75,28 @@ def GetProbData(data, feature, FiName):
         return(ProbRows)
         
 
+def MergeMultipleData(MainData, Features):
+    '''
+    Parameters
+    ----------
+    MainData : Dict of dataframes
+        Summary data for different features .
+    Features : TYPE
+        Different features to merge togather. These features don't need processing.
+
+    Returns
+    -------
+    FinDat : Single data with all the features .
+
+    '''
+    FinData = pd.DataFrame({'Name':[]})
+    l_on = ['Name']
+    for feature in Features:
+        TempData1 = MainData[feature]['Ret2'].reset_index()
+        TempData1 = TempData1[['Name',feature]]
+        FinData = FinData.merge(TempData1, on = l_on, how= 'right')
+    return(FinData)
+
 def CleanAADT_1stLevel(TempData):
     '''
     Parameters

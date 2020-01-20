@@ -4,6 +4,7 @@ Created on Thu Jan 16 08:55:16 2020
 
 @author: abibeka
 """
+from collections import defaultdict
 
 import os
 import pandas as pd
@@ -22,6 +23,10 @@ from CommonFunctions_FreevalPA_Cleaning import CleanCityCode_2ndLevel
 from CommonFunctions_FreevalPA_Cleaning import PlotlyDebugFigs
 from CommonFunctions_FreevalPA_Cleaning import PlotlyDebugFigs_2
 from CommonFunctions_FreevalPA_Cleaning import MergeMultipleData
+from CommonFunctions_FreevalPA_Cleaning import Clean_Tot_Width_1stLevel
+from CommonFunctions_FreevalPA_Cleaning import CleanTotWidth_2ndLevel
+from CommonFunctions_FreevalPA_Cleaning import CleanDivsrType_2ndLevel
+from CommonFunctions_FreevalPA_Cleaning import CleanDivsrType_1stLevel
 
 # Change the default stacking
 from plotly.offline import plot
@@ -54,7 +59,7 @@ ProbDat = pd.DataFrame()
 NumRowsDat = pd.DataFrame()
 Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE','DISTRICT_N','JURIS', 'DIR_IND',
             'FAC_TYPE','TOTAL_WIDT','LANE_CNT','DIVSR_TYPE','DIVSR_WIDT','TRAF_RT_NO','TRAF_RT__1'
-            ,'URBAN_RURA']
+            ,'URBAN_RURA','TRK_PCT','K_FACTOR','D_FACTOR','T_FACTOR']
 Features_RetDict = GetVariableSummary('I_80_EB_1.xls',Features)
 
 
@@ -72,7 +77,7 @@ for _, row in FileData.iterrows():
         if((np.max(temp)>=2)):
             #Plot here so that you don't have too many plots
             Path("ProcessedData/Fig/{}/".format(feature)).mkdir(parents=True, exist_ok=True)            
-            PlotlyDebugFigs(DatDict['Ret2'].reset_index(),np.max(temp),feature, row['SheetName'],"ProcessedData/Fig/{}/".format(feature))
+            # PlotlyDebugFigs(DatDict['Ret2'].reset_index(),np.max(temp),feature, row['SheetName'],"ProcessedData/Fig/{}/".format(feature))
         
         ProbRows = GetProbData(DatDict['Ret1'],feature,row['FileName'])
         ProbDat = pd.concat([ProbDat,ProbRows])
@@ -115,15 +120,24 @@ Prob_LANE_CNT =Prob_LANE_CNT.merge(Prob_TOTAL_WIDT, on = On_1, how ='inner')
 #****************************************************************************************************************************
 # NumDuplicates = np.empty(0)
 
+# feature = 'TOTAL_WIDT'
 
+# MainData = GetVariableSummary("I_78_EB_1.xls",Features)
+# TempData = MainData["TOTAL_WIDT"]["Ret2"].reset_index()
+# Tp2 = Clean_Tot_Width_1stLevel(TempData,feature)
+# Tp2 = pd.DataFrame(Tp2).reset_index()
+# Tp2.rename(columns = {0:"AADT"},inplace=True)
+# Tp2.merge(TempData,left_on= ['Name','AADT'],
+#           right_on =['Name','CUR_AADT'],how ='left')
 #4.1 Prelim Checks
 #****************************************************************************************************************************
-NumDuplicates_AADT = np.empty(0)
-NumDuplicates_CTY_Code = np.empty(0)
-NumDuplicates_District = np.empty(0)
 
+
+NumDuplicates = defaultdict(list)
 CleanData_Dict = {}
-Features = ['CUR_AADT','ST_RT_NO', 'CTY_CODE','DISTRICT_N','JURIS', 'DIR_IND', 'FAC_TYPE','TRAF_RT_NO','TRAF_RT__1']
+Features = ['DIVSR_WIDT','DIVSR_TYPE','CUR_AADT','ST_RT_NO', 'CTY_CODE',
+            'DISTRICT_N','JURIS', 'DIR_IND', 'FAC_TYPE','TRAF_RT_NO','TRAF_RT__1',
+            'TOTAL_WIDT','LANE_CNT','URBAN_RURA','TRK_PCT','K_FACTOR','D_FACTOR','T_FACTOR']
 FinAADT_Dat = pd.DataFrame()
 FinStRt_Dat = pd.DataFrame()
 FinDir_Dat  =pd.DataFrame()
@@ -138,42 +152,58 @@ for _, row in FileData.iterrows():
     Fin_Fin_data = pd.DataFrame({'Name':[]})
     MainData = GetVariableSummary(row['FileName'],Features)
     for feature in Features:
+        temp = np.squeeze(MainData[feature]['Ret1'].loc[:,feature].apply(lambda x: len(x)).values)
         if(feature == "CUR_AADT"):
+            #Use Max Frequency or Maximum AADT. Also look for valleys and Peaks
             TempData = MainData["CUR_AADT"]["Ret2"].reset_index()
             Tp2 = CleanAADT_1stLevel(TempData)
             if(row['FileName'] in ProbDict['CUR_AADT'].FileName.values):
                 ''
                 Path("ProcessedData/Fig/Clean_{}/".format(feature)).mkdir(parents=True, exist_ok=True)   
-                PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp),feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
-            NumDuplicates_AADT = np.append(NumDuplicates_AADT,Tp2['CountDat'])
-            FinAADT_Dat = pd.concat([FinAADT_Dat, Tp2['OutDat']])
+                # PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp),feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
+            NumDuplicates[feature] =NumDuplicates[feature] + Tp2['CountDat'].tolist()
+            #FinAADT_Dat = pd.concat([FinAADT_Dat, Tp2['OutDat']])
             CleanData_Dict[feature] = Tp2['OutDat']
-        elif(feature =="CTY_CODE"):
-            TempData = MainData['CTY_CODE']["Ret2"].reset_index()
+        elif(feature in ["CTY_CODE","DISTRICT_N"]):
+            #Check for max freq. For equal freq use previous value
+            TempData = MainData[feature]["Ret2"].reset_index()
             Tp2 = CleanCityCode_1stLevel(TempData, feature)
             CleanData_Dict[feature] = Tp2['OutDat']
-            if(row['FileName'] in ProbDict['CTY_CODE'].FileName.values):
+            if(row['FileName'] in ProbDict[feature].FileName.values):
                 Path("ProcessedData/Fig/Clean_{}/".format(feature)).mkdir(parents=True, exist_ok=True)   
-                PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp),feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
+                # PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp),feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
                 ""
-            NumDuplicates_CTY_Code = np.append(NumDuplicates_CTY_Code,Tp2['CountDat'])
-        elif(feature =="DISTRICT_N"):
-            TempData = MainData['DISTRICT_N']["Ret2"].reset_index()
-            Tp2 = CleanCityCode_1stLevel(TempData, feature)
-            CleanData_Dict[feature] = Tp2['OutDat']
-            if(row['FileName'] in ProbDict['DISTRICT_N'].FileName.values):
-                ''
-                Path("ProcessedData/Fig/Clean_{}/".format(feature)).mkdir(parents=True, exist_ok=True)   
-                PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp), feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
-            NumDuplicates_District = np.append(NumDuplicates_District,Tp2['CountDat'])
+            NumDuplicates[feature] =NumDuplicates[feature] + Tp2['CountDat'].tolist()      
         elif(feature == "DIR_IND"):
+            #Remove "B". Just use cardinal directions
             TempData = MainData['DIR_IND']["Ret2"].reset_index()
             CleanData_Dict[feature] = TempData[TempData.DIR_IND!='B'] # ProbDat shows that the only issue with Dir in "B". Just remove it
             FinDir_Dat = pd.concat([FinDir_Dat,CleanData_Dict[feature]])
         elif(feature == "FAC_TYPE"):
+            # I manually check. We need to keep 2 and drop 1
             TempData = MainData['FAC_TYPE']["Ret2"].reset_index()
-            CleanData_Dict[feature] = TempData.groupby('Name')['FAC_TYPE'].max().reset_index() # I manually check. We need to keep 2 and drop 1
+            CleanData_Dict[feature] = TempData.groupby('Name')['FAC_TYPE'].max().reset_index() 
             FinFacType_Dat = pd.concat([FinFacType_Dat,CleanData_Dict[feature]])
+        elif((feature =="TOTAL_WIDT") |(feature =="LANE_CNT")):
+            # Use min lane width or Num lanes
+            TempData = MainData[feature]["Ret2"].reset_index()
+            Tp2 = Clean_Tot_Width_1stLevel(TempData, feature)
+            CleanData_Dict[feature] = Tp2['OutDat']
+            NumDuplicates[feature] =NumDuplicates[feature] + Tp2['CountDat'].tolist()
+            if(row['FileName'] in ProbDict[feature].FileName.values):
+                ''
+                Path("ProcessedData/Fig/Clean_{}/".format(feature)).mkdir(parents=True, exist_ok=True)   
+                #PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp), feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
+        elif(feature in ["DIVSR_WIDT","DIVSR_TYPE","URBAN_RURA","TRK_PCT","K_FACTOR","D_FACTOR","T_FACTOR"]):
+            # Use the max freq or the max value
+            TempData = MainData[feature]["Ret2"].reset_index()
+            Tp2 = CleanDivsrType_1stLevel(TempData, feature)
+            CleanData_Dict[feature] = Tp2['OutDat']
+            NumDuplicates[feature] =NumDuplicates[feature] + Tp2['CountDat'].tolist()
+            if(row['FileName'] in ProbDict[feature].FileName.values):
+                ''
+                Path("ProcessedData/Fig/Clean_{}/".format(feature)).mkdir(parents=True, exist_ok=True)   
+                PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp), feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
         else: ""
             #No processing needed
         if feature not in Features_With_No_Issues:
@@ -195,9 +225,12 @@ for _, row in FileData.iterrows():
     Fin_Fin_data.to_excel(writer, row['SheetName'],na_rep='-')
     writer.save() 
 
+for key, val in NumDuplicates.items():
+    unique, counts = np.unique(val, return_counts=True)
+    print(key)
+    print("Unique: ", unique)
+    print("Count: ", counts)
+    print("-"*50)
 FinFacType_Dat.shape
 FinDir_Dat.shape
 FinDir_Dat.groupby('DIR_IND').count()
-unique, counts = np.unique(NumDuplicates_AADT, return_counts=True)
-unique2, counts2 = np.unique(NumDuplicates_CTY_Code, return_counts=True)
-unique3, counts3 = np.unique(NumDuplicates_District, return_counts=True)

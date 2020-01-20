@@ -188,6 +188,96 @@ def CleanCityCode_2ndLevel(data, feature):
     return(Feature_val)
 
 
+def CleanTotWidth_2ndLevel(data, feature):
+    '''
+    Parameters
+    ----------
+    data : list from a row of pd.DataFrame 
+        RetDict[Tot_Width]['Ret2'].
+    Returns
+    -------
+    Single CTY_CODE values from multiple values.
+
+    '''
+    if(np.std(data.ObsFreq) ==0) & (data.ObsFreq.size>1):
+        Feature_val = data[feature].min()
+    else:
+        Feature_val = data.loc[data.ObsFreq==max(data.ObsFreq),feature].values[0]
+    return(Feature_val)
+
+def Clean_Tot_Width_1stLevel(TempData, feature):
+    '''
+    Parameters
+    ----------
+    TempData : pd.DataFrame
+        RetDict[CTY_CODE]['Ret2'].
+    Made it generic for other features
+    Returns
+    -------
+    Single AADT values from multiple values.
+
+    '''
+    Tp2 = TempData.groupby(['Name','FreevalSeg']).apply(CleanTotWidth_2ndLevel,feature).reset_index()
+    Tp2.rename(columns = {0:feature},inplace=True)
+    Tp2[feature] = Tp2[feature].fillna(method ='bfill')
+    Tp2 = Tp2.merge(TempData,left_on= ['Name','FreevalSeg',feature],
+              right_on =['Name','FreevalSeg',feature],how ='left')
+    Tp2.ObsFreq = Tp2.ObsFreq.fillna(1)
+    Tp2.sort_values("Name")
+    Tp2.reset_index(inplace=True,drop=True)
+    Tp2.UniqNo = 1
+    #Debug_Dat = TempData.groupby(['Name'])['ObsFreq']
+    #data = Debug_Dat.get_group(100000830078)
+    CountData = Tp2.groupby(['Name'])[feature].count().values
+    # Tp2 = Tp2[['Name','CTY_CODE']]
+    return({'OutDat' : Tp2, 'CountDat': CountData})
+
+
+
+
+def CleanDivsrType_1stLevel(TempData, feature):
+    '''
+    Parameters
+    ----------
+    Temp : pd.DataFrame
+        RetDict[CTY_CODE]['Ret2'].
+    Made it generic for other features
+    Returns
+    -------
+    Single AADT values from multiple values.
+
+    '''
+    Tp2 = TempData.groupby(['Name']).apply(CleanDivsrType_2ndLevel,feature).reset_index()
+    Tp2.rename(columns = {0:feature},inplace=True)
+    Tp2[feature] = Tp2[feature].fillna(method ='bfill')
+    Tp2 = Tp2.merge(TempData,left_on= ['Name',feature],
+              right_on =['Name',feature],how ='left')
+    Tp2.sort_values("Name")
+    Tp2.reset_index(inplace=True,drop=True)
+    Tp2.UniqNo = 1
+    #Debug_Dat = TempData.groupby(['Name'])['ObsFreq']
+    #data = Debug_Dat.get_group(100000830078)
+    CountData = Tp2.groupby(['Name'])[feature].count().values
+    # Tp2 = Tp2[['Name','CTY_CODE']]
+    return({'OutDat' : Tp2, 'CountDat': CountData})
+
+def CleanDivsrType_2ndLevel(data, feature):
+    '''
+    Parameters
+    ----------
+    data : list from a row of pd.DataFrame 
+        RetDict[CTY_CODE]['Ret2'].
+    Returns
+    -------
+    Single CTY_CODE values from multiple values.
+
+    '''
+    if(np.std(data.ObsFreq) ==0) & (data.ObsFreq.size>1):
+        Feature_val = data[feature].max()
+    else:
+        Feature_val = data.loc[data.ObsFreq==max(data.ObsFreq),feature].values[0]
+    return(Feature_val)
+
 
 
 def PlotlyDebugFigs(Dat_Plot, MaxDuplicates, feature, SheetNm, OutPath = 'ProcessedData/Fig/Junk/'):

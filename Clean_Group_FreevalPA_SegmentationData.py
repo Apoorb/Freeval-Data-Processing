@@ -109,10 +109,14 @@ Prob_LANE_CNT = ProbDat[~ProbDat.LANE_CNT.isna()]
 Prob_DIVSR_TYPE = ProbDat[~ProbDat.DIVSR_TYPE.isna()]
 Prob_DIVSR_WIDT = ProbDat[~ProbDat.DIVSR_WIDT.isna()]
 # Prob_TRAF_RT_NO = ProbDat[~ProbDat.TRAF_RT_NO.isna()]
-
-
 On_1 = ['FileName','Name']
 Prob_LANE_CNT =Prob_LANE_CNT.merge(Prob_TOTAL_WIDT, on = On_1, how ='inner')
+
+OutFi = "ProcessedData/Fig/"+"ProbRows"+'.xlsx'
+writer=pd.ExcelWriter(OutFi)
+for key, val in ProbDict.items():
+    val.to_excel(writer,key,na_rep='-',index=False)
+writer.save() 
 #****************************************************************************************************************************
 
 
@@ -135,9 +139,10 @@ Prob_LANE_CNT =Prob_LANE_CNT.merge(Prob_TOTAL_WIDT, on = On_1, how ='inner')
 
 NumDuplicates = defaultdict(list)
 CleanData_Dict = {}
-Features = ['DIVSR_WIDT','DIVSR_TYPE','CUR_AADT','ST_RT_NO', 'CTY_CODE',
-            'DISTRICT_N','JURIS', 'DIR_IND', 'FAC_TYPE','TRAF_RT_NO','TRAF_RT__1',
-            'TOTAL_WIDT','LANE_CNT','URBAN_RURA','TRK_PCT','K_FACTOR','D_FACTOR','T_FACTOR']
+
+Features = ['TRAF_RT_NO','TRAF_RT__1','DISTRICT_N','JURIS','ST_RT_NO', 'CTY_CODE',
+            'DIR_IND', 'FAC_TYPE', 'URBAN_RURA', 'TOTAL_WIDT','LANE_CNT','DIVSR_WIDT','DIVSR_TYPE',
+            'CUR_AADT','TRK_PCT','K_FACTOR','D_FACTOR','T_FACTOR']                                                      
 FinAADT_Dat = pd.DataFrame()
 FinStRt_Dat = pd.DataFrame()
 FinDir_Dat  =pd.DataFrame()
@@ -203,7 +208,7 @@ for _, row in FileData.iterrows():
             if(row['FileName'] in ProbDict[feature].FileName.values):
                 ''
                 Path("ProcessedData/Fig/Clean_{}/".format(feature)).mkdir(parents=True, exist_ok=True)   
-                PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp), feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
+                #PlotlyDebugFigs_2(TempData,Tp2['OutDat'],np.max(temp), feature, row['SheetName'], "ProcessedData/Fig/Clean_{}/Cl_".format(feature))
         else: ""
             #No processing needed
         if feature not in Features_With_No_Issues:
@@ -222,7 +227,7 @@ for _, row in FileData.iterrows():
 
     OutFi = "ProcessedData/Prcsd_"+row['SheetName']+'.xlsx'
     writer=pd.ExcelWriter(OutFi)
-    Fin_Fin_data.to_excel(writer, row['SheetName'],na_rep='-')
+    Fin_Fin_data.to_excel(writer, row['SheetName'],na_rep='-',index=False)
     writer.save() 
 
 for key, val in NumDuplicates.items():

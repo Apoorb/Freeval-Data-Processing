@@ -17,4 +17,7 @@
 - Freeval_PA_Dat_Process_CleanVersion.py: Messy script. 1st attempt for cleaning data. 
 
 # NCHRP 7-26
-- Process-Freeval-PA-Segmentation-NCHRP7-26.py: 
+- Process-Freeval-PA-Segmentation-NCHRP7-26.py: Script for getting ramp types from PennDOT segmentation database
+		- High false negatives for Lane add, lane drop, major merge and diverge types	
+- Process-Freeval-NC-Segmentation-NCHRP7-26.py: Copy of above script for processing NC segmentation database.
+		- High false negatives for Lane add, lane drop, major merge and diverge types

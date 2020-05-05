@@ -65,7 +65,7 @@ Features_RetDict = GetVariableSummary('I_80_EB_1.xls',Features)
 
 for _, row in FileData.iterrows():
     Features_RetDict = GetVariableSummary(row['FileName'],Features)
-    #Get the # of unique Names per file 
+    #Get the # of unique Freeval segment Names per file 
     TempDict_0 = {"Name" : [row['FileName']], "Rows" : [Features_RetDict['CUR_AADT']['Ret1'].shape[0]]}
     Temp_0 = pd.DataFrame.from_dict(TempDict_0)
     NumRowsDat = pd.concat([NumRowsDat,Temp_0])

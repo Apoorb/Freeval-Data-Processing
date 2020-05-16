@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 #Import the data
 #******************************************************************************************
-RunScriptPrev = False
+RunScriptPrev = True
 if RunScriptPrev:
     os.chdir(r'C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents\Passive Projects\Freeval-PA')
     x1 = pd.ExcelFile('Geometrics_sample.xlsx')
@@ -28,8 +28,9 @@ else:
     os.chdir(r'C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents\Passive Projects\Freeval-PA\Part 2')
     x1 = pd.ExcelFile('Geometrics_sample.xlsx')
     x1.sheet_names
-dat = x1.parse("Geometrics",dtype= {'FCOUNTY':'str','FROUTE':'str','FSEG':'str','Concat':'str'})
+dat = x1.parse("Geometrics",dtype= {'FCOUNTY':'str','FROUTE':'str','FSEG':'str'})
 dat.Concat = dat.FCOUNTY + dat.FROUTE + dat.FSEG
+#TODO: Create a new column. Need FSEG as a string
 dat.FSEG = dat.FSEG.astype(int)
 dat.columns
 dat.dtypes
@@ -89,8 +90,13 @@ def RemoveDuplicatedRows_GetCorLen(data_Comp, dir1 = 'N'):
     dat_Uniq.loc[dat_Uniq.FLen_Cor.isna(),'FLen_Cor'] = dat_Uniq.loc[dat_Uniq.FLen_Cor.isna(),'FLENGTH']
     dat_Uniq["Error"] = dat_Uniq["FLen_Cor"] - dat_Uniq["FLENGTH"]
     #Updated on May 5 2020
-    dat_Uniq.loc[:,"Start"] = dat_Uniq.FOFFSET
-    dat_Uniq.loc[:,"End"] = dat_Uniq.FOFFSET+  dat_Uniq.FLen_Cor
+    if dir1 == "N":
+        dat_Uniq.loc[:,"Start"] = dat_Uniq.FOFFSET
+        dat_Uniq.loc[:,"End"] = dat_Uniq.FOFFSET+  dat_Uniq.FLen_Cor
+    else: 
+        dat_Uniq.loc[:,"End"] = dat_Uniq.FOFFSET
+        dat_Uniq.loc[:,"Start"] = dat_Uniq.FOFFSET - dat_Uniq.FLen_Cor
+        
     RetList = [dat_Uniq, Duplicated_dat,IsTheDataCleaningCorrect, RowsThatNeedDeletion, NumRowsRemoved]
     return(RetList)
 

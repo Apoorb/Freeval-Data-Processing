@@ -112,3 +112,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.idea/dictionaries/abibeka.xml
+*.xml
+*.xml
+.idea/inspectionProfiles/profiles_settings.xml

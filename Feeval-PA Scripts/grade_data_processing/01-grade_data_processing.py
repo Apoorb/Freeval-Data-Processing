@@ -21,6 +21,7 @@ import os
 import folium
 import math
 import sys
+import glob
 sys.path.append(r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents\Github\Freeval-Data-Processing"
                 r"\Feeval-PA Scripts\grade_data_processing")
 import grade_process_mod as gradepr
@@ -31,7 +32,8 @@ path_to_data = (r'C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc'
                 r'\June_23_2020')
 path_to_grade_data_file = os.path.join(path_to_data, 'Processing.gdb')
 path_processed_data = os.path.join(path_to_data, "processed_data")
-
+if not os.path.exists(path_processed_data):
+    os.mkdir(path_processed_data)
 # 2 read data
 # -----------------------------------------------------------------------------
 fiona.listlayers(path_to_grade_data_file)
@@ -40,31 +42,27 @@ grade_gdf = gradepr.read_data(
     layer_gdf='SpatialJoin_GradeDataFINAL'
 )
 
-grade_gdf_asc_sort = (
-    grade_gdf
-        .loc[lambda x: x.seg_no.astype(int) % 2 == 0]
-        .sort_values(by=['name', 'fkey'], ascending=[True, True])
-        .reset_index(drop=True)
-)
+if (len(glob.glob(os.path.join(path_processed_data, "grade_gdf_asc_sort", "*.shp"))) == 1
+    & len(glob.glob(os.path.join(path_processed_data, "grade_gdf_desc_sort", "*.shp"))) == 1):
+    grade_gdf_asc_sort = gradepr.read_subset_dat_by_dir(
+        path_processed_data = path_processed_data,
+        shapefile_nm = "grade_gdf_asc_sort"
+    )
 
-grade_gdf_desc_sort = (
-    grade_gdf
-        .loc[lambda x: x.seg_no.astype(int) % 2 != 0]
-        .sort_values(by=['name', 'fkey'], ascending=[True, False])
-        .reset_index(drop=True)
-)
+    grade_gdf_desc_sort = gradepr.read_subset_dat_by_dir(
+        path_processed_data = path_processed_data,
+        shapefile_nm = "grade_gdf_desc_sort"
+    )
+else:
+    grade_gdf_asc_sort, grade_gdf_desc_sort = gradepr.read_subset_dat(
+        grade_gdf = grade_gdf
+    )
 
-if not os.path.exists(path_processed_data):
-    os.mkdir(path_processed_data)
-if not os.path.exists(os.path.join(path_processed_data,"grade_gdf_asc_sort")):
-    os.mkdir(os.path.join(path_processed_data,"grade_gdf_asc_sort"))
-if not os.path.exists(os.path.join(path_processed_data, "grade_gdf_desc_sort")):
-    os.mkdir(os.path.join(path_processed_data,"grade_gdf_desc_sort"))
+    gradepr.save_subset_dat_by_dir(
+        grade_gdf_asc_sort = grade_gdf_asc_sort,
+        grade_gdf_desc_sort = grade_gdf_desc_sort
+    )
 
-grade_gdf_asc_sort_outfile = os.path.join(path_processed_data, "grade_gdf_asc_sort", "grade_gdf_asc_sort.shp")
-grade_gdf_desc_sort_outfile = os.path.join(path_processed_data, "grade_gdf_desc_sort", "grade_gdf_desc_sort.shp")
-grade_gdf_asc_sort.to_file(driver='ESRI Shapefile', filename=grade_gdf_asc_sort_outfile)
-grade_gdf_desc_sort.to_file(driver='ESRI Shapefile', filename=grade_gdf_desc_sort_outfile)
 
 
 # Check Directions

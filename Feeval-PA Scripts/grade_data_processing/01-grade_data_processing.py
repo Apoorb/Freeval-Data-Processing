@@ -12,7 +12,8 @@ from IPython import get_ipython
 ipython = get_ipython()
 ipython.magic("reset -f")
 ipython = get_ipython()
-
+ipython.magic("load_ext autoreload")
+ipython.magic("autoreload 2")
 # 1 Import Libraries and Set Global Parameters
 # 1.1 Import Libraries
 import pandas as pd
@@ -54,7 +55,7 @@ if (len(glob.glob(os.path.join(path_processed_data, "grade_gdf_asc_sort", "*.shp
         shapefile_nm = "grade_gdf_desc_sort"
     )
 else:
-    grade_gdf_asc_sort, grade_gdf_desc_sort = gradepr.read_subset_dat(
+    grade_gdf_asc_sort, grade_gdf_desc_sort = gradepr.create_subset_dat(
         grade_gdf = grade_gdf
     )
 

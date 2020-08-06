@@ -23,7 +23,7 @@ def read_data(filename_gdf, layer_gdf):
     return subset_gdf
 
 
-def read_subset_dat(grade_gdf):
+def create_subset_dat(grade_gdf):
     """
     Parameters
     ----------

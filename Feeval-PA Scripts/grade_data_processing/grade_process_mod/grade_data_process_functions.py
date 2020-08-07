@@ -1,6 +1,7 @@
 import geopandas as gpd
 import inflection
 import os
+import pandas as pd
 
 def read_data(filename_gdf, layer_gdf):
     """
@@ -68,8 +69,51 @@ def save_subset_dat_by_dir(grade_gdf_asc_sort, grade_gdf_desc_sort, path_process
     grade_gdf_desc_sort_outfile = os.path.join(path_processed_data, "grade_gdf_desc_sort", "grade_gdf_desc_sort.shp")
     grade_gdf_asc_sort.to_file(driver='ESRI Shapefile', filename=grade_gdf_asc_sort_outfile)
     grade_gdf_desc_sort.to_file(driver='ESRI Shapefile', filename=grade_gdf_desc_sort_outfile)
+
+    grade_df_asc = pd.DataFrame(grade_gdf_asc_sort.drop(columns='geometry'))
+    grade_df_desc = pd.DataFrame(grade_gdf_desc_sort.drop(columns='geometry'))
+    grade_df_asc.to_csv(os.path.join(path_processed_data, "grade_asc_data.csv"))
+    grade_df_desc.to_csv(os.path.join(path_processed_data, "grade_desc_data.csv"))
     return 1
 
 def read_subset_dat_by_dir(path_processed_data, shapefile_nm = "grade_gdf_asc_sort"):
+    """
+    Parameters
+    ----------
+    path_processed_data : TYPE
+        DESCRIPTION.
+    shapefile_nm : TYPE, optional
+        DESCRIPTION. The default is "grade_gdf_asc_sort".
+
+    Returns
+    -------
+    gdf : TYPE
+        DESCRIPTION.
+
+    """
     input_file = os.path.join(path_processed_data, shapefile_nm, f"{shapefile_nm}.shp")
     gdf = gpd.read_file(filename=input_file)
+    return gdf
+
+
+def print_directions(grade_gdf_asc_sort, ):
+    """
+    Parameters
+    ----------
+    grade_gdf_asc_sort : TYPE
+        DESCRIPTION.
+     : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    # Check Directions
+    print("Direction for Ascending data\n",
+          grade_gdf_asc_sort.dir_ind.value_counts())
+
+    grade_gdf_desc_sort.dir_ind.value_counts()
+    print("Direction for Descending data\n",
+          grade_gdf_desc_sort.dir_ind.value_counts())

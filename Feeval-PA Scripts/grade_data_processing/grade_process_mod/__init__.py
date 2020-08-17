@@ -1,1 +1,3 @@
-from .grade_data_process_functions import *
+from .read_grade import *
+from .process_grade import *
+

@@ -59,7 +59,22 @@ def data_read_switch(path_to_data, path_to_grade_data_file,
             "grade_df_desc":grade_df_desc
         }
         return return_dict
-    elif ~ read_saved_csv:
+    elif not read_saved_csv:
+        if (len(glob.glob(
+            os.path.join(path_processed_data,
+                             "grade_gdf_asc_sort", "*.shp"))) == 1)\
+            & (len(glob.glob(
+            os.path.join(path_processed_data,
+                             "grade_gdf_desc_sort", "*.shp"))) == 1):
+                Y_N = input("Directly reading GIS geodatabase is expensive."
+                      "You have smaller subset of data saved as .shp."
+                      "and .csv./n"
+                      "Do you want to continue this read operation: (Y/N)")
+                if Y_N.upper() == "N":
+                    print("Use the saved .shp or .csv file parameters!")
+                    return
+                elif Y_N.upper() != "N":
+                    raise ValueError("Enter Y or N next time!")
         fiona.listlayers(path_to_grade_data_file)
         grade_gdf = read_raw_data(
             filename_gdf=path_to_grade_data_file,
@@ -136,15 +151,15 @@ def create_subset_dat(grade_gdf):
     grade_gdf_asc_sort = (
         grade_gdf
             .loc[lambda x: x.seg_no.astype(int) % 2 == 0]
-            .sort_values(by=['name', 'cty_code', 'fkey'],
+            .sort_values(by=['name', 'fseg', 'foffset'],
                          ascending=[True, True, True])
             .reset_index(drop=True)
     )
     grade_gdf_desc_sort = (
         grade_gdf
             .loc[lambda x: x.seg_no.astype(int) % 2 != 0]
-            .sort_values(by=['name', 'cty_code', 'fkey'],
-                         ascending=[True, True, False])
+            .sort_values(by=['name', 'fseg', 'foffset'],
+                         ascending=[True, False, False])
             .reset_index(drop=True)
     )
     return grade_gdf_asc_sort, grade_gdf_desc_sort

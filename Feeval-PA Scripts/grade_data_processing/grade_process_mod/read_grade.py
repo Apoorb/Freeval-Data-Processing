@@ -59,7 +59,7 @@ def data_read_switch(path_to_data, path_to_grade_data_file,
             "grade_df_desc":grade_df_desc
         }
         return return_dict
-    elif ~ read_saved_shp_csv:
+    elif ~ read_saved_csv:
         fiona.listlayers(path_to_grade_data_file)
         grade_gdf = read_raw_data(
             filename_gdf=path_to_grade_data_file,

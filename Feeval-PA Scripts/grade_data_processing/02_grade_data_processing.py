@@ -50,9 +50,17 @@ if __name__ == "__main__":
             sort_order_ne_sw_=sort_order,
             tolerance_fkey_misclass_per_=0)
         asc_grade_obj_dict[st_rt_no_].clean_grade_df()
-        asc_grade_obj_dict[st_rt_no_].clean_grade_df()
         asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
 
+    for st_rt_no_ in set(grade_df_desc.st_rt_no):
+        asc_grade_obj_dict[st_rt_no_] = gradepr.GradeClean(
+            grade_df_asc_or_desc_=grade_df_desc,
+            route=st_rt_no_,
+            grade_df_name_="grade_df_desc",
+            sort_order_ne_sw_=sort_order,
+            tolerance_fkey_misclass_per_=1)
+        asc_grade_obj_dict[st_rt_no_].clean_grade_df()
+        asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
 
 
 

@@ -6,7 +6,7 @@ import pandas as pd
 import os
 import sys
 
-
+# FIXME: Add documentation
 class CleanGrade:
     def __init__(self, grade_df_asc_or_desc_, route, grade_df_name_,
                  sort_order_ne_sw_, tolerance_fkey_misclass_per_):

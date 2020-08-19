@@ -3,15 +3,16 @@ import inflection
 import os
 import pandas as pd
 import glob
-import fiona
+# import fiona
 import shutil
 
+# FIXME: Add documentation
 class ReadGrade:
 
     def __init__(self, path_to_data, path_to_grade_data_file,
-                         path_processed_data,
-                         read_saved_shp_csv=False,
-                         read_saved_csv=True):
+                 path_processed_data,
+                 read_saved_shp_csv=False,
+                 read_saved_csv=True):
         self.path_to_data = path_to_data
         self.path_processed_data = path_processed_data
         self.path_to_grade_data_file = path_to_grade_data_file
@@ -20,20 +21,6 @@ class ReadGrade:
         self.read_saved_csv = read_saved_csv
 
     def data_read_switch(self):
-        """
-
-        Parameters
-        ----------
-        path_to_data
-        path_to_grade_data_file
-        path_processed_data
-        read_saved_shp_csv
-        read_saved_csv
-
-        Returns
-        -------
-
-        """
         if (self.read_saved_shp_csv
             & (len(glob.glob(
                 os.path.join(self.path_processed_data,
@@ -116,15 +103,7 @@ class ReadGrade:
             print("")
 
     def read_raw_data(self):
-        """
-        Parameters
-        ----------
-        filename_gdf
-        layer_gdf
-
-        Returns
-        -------
-        """
+        """Directly read the GIS geodatabase. Expensive operation."""
         gdf = gpd.read_file(filename=self.grade_data_file,
                             layer=self.layer_raw_grade_data)
         gdf.columns = [
@@ -141,13 +120,17 @@ class ReadGrade:
 
     def create_subset_dat(self, grade_gdf):
         """
+        Create 2 datasets for ascending and descending order from the
+        primary geodatabase layer.
         Parameters
         ----------
-        grade_gdf
-
+        grade_gdf: gpd.GeoDataFrame()
+        Primary geodatabase layer with all data.
         Returns
         -------
+        grade_gdf_asc_sort: gpd.GeoDataFrame()
 
+        grade_gdf_desc_sort
         """
         grade_gdf_asc_sort = (
             grade_gdf
@@ -172,7 +155,6 @@ class ReadGrade:
         ----------
         grade_gdf_asc_sort
         grade_gdf_desc_sort
-        path_processed_data
 
         Returns
         -------
@@ -213,17 +195,13 @@ class ReadGrade:
 
     def read_subset_dat_by_dir(self, shapefile_nm="grade_gdf_asc_sort"):
         """
+
         Parameters
         ----------
-        path_processed_data : TYPE
-            DESCRIPTION.
-        shapefile_nm : TYPE, optional
-            DESCRIPTION. The default is "grade_gdf_asc_sort".
+        shapefile_nm
 
         Returns
         -------
-        gdf : TYPE
-            DESCRIPTION.
 
         """
         input_file = os.path.join(self.path_processed_data, shapefile_nm,

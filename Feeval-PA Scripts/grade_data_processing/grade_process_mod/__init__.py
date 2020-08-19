@@ -1,2 +1,2 @@
-from .read_grade import *
-from .process_grade import *
+from .read_grade import ReadGrade
+from .process_grade import CleanGrade

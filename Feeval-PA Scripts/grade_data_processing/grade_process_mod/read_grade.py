@@ -11,24 +11,18 @@ def data_read_switch(path_to_data, path_to_grade_data_file,
                      read_saved_shp_csv=False,
                      read_saved_csv=True):
     """
-    Read the appropriate file based on what was saved previously and
-    read_shape_file tag.
 
     Parameters
     ----------
-    path_to_data : TYPE
-        DESCRIPTION.
-    path_to_grade_data_file : TYPE
-        DESCRIPTION.
-    path_processed_data : TYPE
-        DESCRIPTION.
-    read_shape_file : TYPE, optional
-        DESCRIPTION. The default is False.
+    path_to_data
+    path_to_grade_data_file
+    path_processed_data
+    read_saved_shp_csv
+    read_saved_csv
 
     Returns
     -------
-    return_dict : TYPE
-        DESCRIPTION.
+
     """
     if (read_saved_shp_csv 
         & (len(glob.glob(

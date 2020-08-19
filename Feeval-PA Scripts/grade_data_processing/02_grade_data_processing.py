@@ -41,21 +41,17 @@ if __name__ == "__main__":
     df_name = "grade_df_asc"
     df = grade_df_asc
     st_rt_no_ = 80
-
-    for st_rt_no_ in set(df.st_rt_no):
-        clean_df_dict = gradepr.clean_grade_df(
-            grade_df_asc_or_desc=df,
-            grade_df_name=df_name,
-            route_no=st_rt_no_,
-            sort_order_ne_sw=sort_order,
-            tolerance_fkey_misclass_per_1=0)
-
-        clean_df_add_stat = (
-            gradepr.compute_grade_stats(
-                clean_df_dict["correct_sort_df"])
-                             )
-    #process_grade
-    
+    asc_grade_obj_dict = {}
+    for st_rt_no_ in set(grade_df_asc.st_rt_no):
+        asc_grade_obj_dict[st_rt_no_] = gradepr.GradeClean(
+            grade_df_asc_or_desc_=grade_df_asc,
+            route=st_rt_no_,
+            grade_df_name_="grade_df_asc",
+            sort_order_ne_sw_=sort_order,
+            tolerance_fkey_misclass_per_=0)
+        asc_grade_obj_dict[st_rt_no_].clean_grade_df()
+        asc_grade_obj_dict[st_rt_no_].clean_grade_df()
+        asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
 
 
 

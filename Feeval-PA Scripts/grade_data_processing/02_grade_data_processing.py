@@ -43,7 +43,7 @@ if __name__ == "__main__":
     st_rt_no_ = 80
     asc_grade_obj_dict = {}
     for st_rt_no_ in set(grade_df_asc.st_rt_no):
-        asc_grade_obj_dict[st_rt_no_] = gradepr.GradeClean(
+        asc_grade_obj_dict[st_rt_no_] = gradepr.CleanGrade(
             grade_df_asc_or_desc_=grade_df_asc,
             route=st_rt_no_,
             grade_df_name_="grade_df_asc",
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
 
     for st_rt_no_ in set(grade_df_desc.st_rt_no):
-        asc_grade_obj_dict[st_rt_no_] = gradepr.GradeClean(
+        asc_grade_obj_dict[st_rt_no_] = gradepr.CleanGrade(
             grade_df_asc_or_desc_=grade_df_desc,
             route=st_rt_no_,
             grade_df_name_="grade_df_desc",

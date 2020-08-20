@@ -7,6 +7,8 @@ import os
 import sys
 
 # FIXME: Add documentation
+
+
 class CleanGrade:
     def __init__(self, grade_df_asc_or_desc_, route, grade_df_name_,
                  sort_order_ne_sw_, tolerance_fkey_misclass_per_):
@@ -105,7 +107,7 @@ class CleanGrade:
         )
 
         def func_weighted_avg(df1):
-            return (df1.fgrade * df1.flength).sum() / df1.flength.sum()
+            return (df1.fgrade_impute * df1.flength).sum() / df1.flength.sum()
 
         correct_sort_df_new_stat_1 = (
             correct_sort_df_new_stat
@@ -345,13 +347,14 @@ if __name__ == "__main__":
     if not os.path.exists(path_processed_data):
         os.mkdir(path_processed_data)
 
-    grade_df_dict = gradepr.data_read_switch(
+    read_obj = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
         path_processed_data=path_processed_data,
         read_saved_shp_csv=False,
-        read_saved_csv=True,
-    )
+        read_saved_csv=True)
+
+    grade_df_dict = read_obj.data_read_switch()
 
     grade_df_asc = grade_df_dict['grade_df_asc']
     grade_df_desc = grade_df_dict['grade_df_desc']
@@ -360,7 +363,6 @@ if __name__ == "__main__":
     df_name = "grade_df_asc"
     df = grade_df_asc
     st_rt_no_ = 80
-    tolerance_fkey_misclass_per = 0.1
     asc_grade_obj = gradepr.CleanGrade(
         grade_df_asc_or_desc_=grade_df_asc,
         route=st_rt_no_,
@@ -369,3 +371,94 @@ if __name__ == "__main__":
         tolerance_fkey_misclass_per_=0)
     asc_grade_obj.clean_grade_df()
     asc_grade_obj.compute_grade_stats()
+
+    temp = asc_grade_obj.correct_sort_df_add_stat.copy()
+
+    def calc_seg_leg(seg_len_series):
+        return seg_len_series.max() - seg_len_series.min()
+
+    temp_fil = (
+        temp
+        .filter(items=[
+            "freeval_seg_jumps", "name", "name_diff", "bin_cum_flength_0_25mi",
+            "flength",
+            "bin_cum_flength_0_5mi", "cum_flength_mi", "fgrade_impute",
+            "range_freeval_seg_grade", "avg_grade_0_25", "avg_grade_0_5"])
+        .assign(
+            flength_mi_first=(
+                lambda df1: df1.groupby("name")
+                .flength.transform(lambda x: x.iloc[0] / 5280)),
+            cum_flength_mi_reverse=(
+                lambda x: x.groupby("freeval_seg_jumps")
+                .cum_flength_mi
+                .transform(lambda x1: x1.max() - x1))
+        )
+        .groupby(["freeval_seg_jumps", "name"])
+        .agg(
+            flength_mi_first=("flength_mi_first", min),
+            seg_len_temp=("cum_flength_mi", calc_seg_leg),
+            len_before_temp=("cum_flength_mi", min),
+            len_after_seg=("cum_flength_mi_reverse", min),
+        )
+        .assign(
+            seg_len=lambda df1: df1.seg_len_temp + df1.flength_mi_first,
+            len_before_seg=lambda df1: df1.len_before_temp
+                                       - df1.flength_mi_first,
+            temp_0=0,
+            additional_len_need_half=lambda df1: (1 - df1.seg_len) / 2,
+            additional_len_need_half_1=lambda df1:
+            df1[["additional_len_need_half", "temp_0"]].max(axis=1),
+            check_seg_longer_than_1mi=lambda df1: df1.seg_len >= 1,
+            len_need_avail_before_seg=lambda df1:
+            df1[["additional_len_need_half_1", "len_before_seg"]]
+                .min(axis=1),
+            cum_flength_mi_need_avail_before_seg=lambda df1:
+            df1.len_before_seg - df1.len_need_avail_before_seg,
+            len_need_avail_after_seg=lambda df1:
+            df1[["additional_len_need_half_1", "len_after_seg"]]
+                .min(axis=1),
+            cum_flength_mi_need_avail_after_seg=lambda df1:
+            df1[["len_before_seg", "len_need_avail_after_seg", "seg_len"]]
+            .sum(axis=1),
+            check_len_grade_range=lambda df1:
+            df1.cum_flength_mi_need_avail_after_seg
+            - df1.cum_flength_mi_need_avail_before_seg
+        )
+        .filter(items=["freeval_seg_jumps", "name", "seg_len",
+                       "len_before_seg",
+                       "len_after_seg",
+                       "cum_flength_mi_need_avail_before_seg",
+                       "cum_flength_mi_need_avail_after_seg",
+                       "check_len_grade_range"])
+        .reset_index()
+    )
+
+
+    lookup_grade_mi = (
+        temp
+        .filter(items=["freeval_seg_jumps", "cum_flength_mi",
+                       "fgrade_impute"])
+    )
+
+    def get_min_max_range_grade(df_, lookup_grade_mi_):
+        left = df_.cum_flength_mi_need_avail_before_seg
+        right = df_.cum_flength_mi_need_avail_after_seg
+        lookup_grade_mi_fil = (
+            lookup_grade_mi_
+            .loc[lambda x: x.freeval_seg_jumps == df_.freeval_seg_jumps]
+            .assign(temp_cut=lambda df1:
+            pd.cut(df1.cum_flength_mi, np.array([left, right])))
+            .loc[lambda x: ~ x.temp_cut.isna()]
+        )
+        return lookup_grade_mi_fil.fgrade_impute.min(), \
+            lookup_grade_mi_fil.fgrade_impute.max(), \
+            (lookup_grade_mi_fil.fgrade_impute.max()
+            - lookup_grade_mi_fil.fgrade_impute.min())
+
+
+    temp_fil["min_grade"], temp_fil["max_grade"], temp_fil["range_grade"] = zip(
+        *temp_fil.apply(
+            get_min_max_range_grade,
+            lookup_grade_mi_=lookup_grade_mi,
+            axis=1)
+    )

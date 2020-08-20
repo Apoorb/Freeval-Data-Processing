@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import os
 import sys
+import plotly.express as px
+from plotly.offline import plot
 
 # FIXME: Add documentation
 
@@ -17,11 +19,13 @@ class CleanGrade:
         grade_df_name_,
         sort_order_ne_sw_,
         tolerance_fkey_misclass_per_,
+        path_processed_data_,
     ):
         self.grade_df_asc_or_desc = grade_df_asc_or_desc_
         self.grade_df_name = grade_df_name_
         self.sort_order_ne_sw = sort_order_ne_sw_
         self.st_rt_no = route
+        self.path_processed_data = path_processed_data_
         self.grade_df_asc_or_desc = (
             self.grade_df_asc_or_desc.query("st_rt_no == @route")
             .sort_values(
@@ -30,10 +34,14 @@ class CleanGrade:
             .drop_duplicates(["name", "fseg", "foffset"])
             .reset_index(drop=True)
         )
+        self.dir = "_".join(
+            np.ravel(self.grade_df_asc_or_desc.dir_ind.unique()).astype(str)
+        )
         self.tolerance_fkey_misclass_per = tolerance_fkey_misclass_per_
         self.correct_sort_df_test_df = pd.DataFrame()
         self.correct_sort_df = pd.DataFrame()
         self.correct_sort_df_add_stat = pd.DataFrame()
+        self.custom_grade_stat_df = pd.DataFrame()
 
     def clean_grade_df(self):
         """
@@ -41,7 +49,7 @@ class CleanGrade:
         -------
 
         """
-        print(f"Now cleaning route {self.st_rt_no}...")
+        print(f"Now cleaning route {self.st_rt_no} and direction {self.dir}...")
         self.test_max_2_county_in_name()
         sort_order_corrector_df = self.fix_sort_order()
         # Reorder the counties within a freeval segment based on above
@@ -92,7 +100,8 @@ class CleanGrade:
             .fgrade.bfill()
             .ffill(),
             cum_flength=lambda df1: df1.groupby("freeval_seg_jumps").flength.cumsum(),
-            cum_flength_mi=lambda df1: df1.cum_flength / 5280,
+            cum_flength_mi=lambda df1: 1000 * df1.freeval_seg_jumps
+                                       + (df1.cum_flength / 5280),
             bin_cum_flength_0_25mi=lambda df1: df1.groupby(
                 "name"
             ).cum_flength_mi.transform(func_bin_cut_flength, freq_=0.25),
@@ -129,10 +138,163 @@ class CleanGrade:
             how="left",
         )
         self.correct_sort_df_add_stat = correct_sort_df_new_stat_1
+        self.get_grade_stats_by_custom_len()
         # return correct_sort_df_new_stat_1
 
     # def process_grade_df():
     #     return ""
+
+    def get_grade_stats_by_custom_len(self):
+        def calc_seg_leg(seg_len_series):
+            return seg_len_series.max() - seg_len_series.min()
+
+        custom_fields_grade = (
+            self.correct_sort_df_add_stat.filter(
+                items=[
+                    "freeval_seg_jumps",
+                    "name",
+                    "name_diff",
+                    "bin_cum_flength_0_25mi",
+                    "flength",
+                    "bin_cum_flength_0_5mi",
+                    "cum_flength_mi",
+                    "fgrade_impute",
+                ]
+            )
+            .assign(
+                flength_mi_first=(
+                    lambda df1: df1.groupby("name").flength.transform(
+                        lambda x: x.iloc[0] / 5280
+                    )
+                ),
+                cum_flength_mi_reverse=(
+                    lambda x: x.groupby("freeval_seg_jumps").cum_flength_mi.transform(
+                        lambda x1: x1.max() - x1
+                    )
+                ),
+            )
+            .groupby(["freeval_seg_jumps", "name"])
+            .agg(
+                flength_mi_first=("flength_mi_first", min),
+                seg_len_temp=("cum_flength_mi", calc_seg_leg),
+                len_before_temp=("cum_flength_mi", min),
+                len_after_seg=("cum_flength_mi_reverse", min),
+            )
+            .assign(
+                seg_len=lambda df1: df1.seg_len_temp + df1.flength_mi_first,
+                len_before_seg=lambda df1: df1.len_before_temp - df1.flength_mi_first,
+                temp_0=0,
+                additional_len_need_half=lambda df1: (0.5 - df1.seg_len) / 2,
+                additional_len_need_half_1=lambda df1: df1[
+                    ["additional_len_need_half", "temp_0"]
+                ].max(axis=1),
+                check_seg_longer_than_1mi=lambda df1: df1.seg_len >= 0.5,
+                len_need_avail_before_seg=lambda df1: df1[
+                    ["additional_len_need_half_1", "len_before_seg"]
+                ].min(axis=1),
+                cum_flength_mi_need_avail_before_seg=lambda df1: df1.len_before_seg
+                - df1.len_need_avail_before_seg,
+                len_need_avail_after_seg=lambda df1: df1[
+                    ["additional_len_need_half_1", "len_after_seg"]
+                ].min(axis=1),
+                cum_flength_mi_need_avail_after_seg=lambda df1: df1[
+                    ["len_before_seg", "len_need_avail_after_seg", "seg_len"]
+                ].sum(axis=1),
+                check_len_grade_range=lambda df1: df1.cum_flength_mi_need_avail_after_seg
+                - df1.cum_flength_mi_need_avail_before_seg,
+            )
+            .filter(
+                items=[
+                    "freeval_seg_jumps",
+                    "name",
+                    "seg_len",
+                    "len_before_seg",
+                    "len_after_seg",
+                    "cum_flength_mi_need_avail_before_seg",
+                    "cum_flength_mi_need_avail_after_seg",
+                    "check_len_grade_range",
+                ]
+            )
+            .reset_index()
+        )
+
+        lookup_grade_mi = self.correct_sort_df_add_stat.filter(
+            items=["freeval_seg_jumps", "cum_flength_mi", "fgrade_impute"]
+        )
+
+        def get_min_max_range_grade(df_, lookup_grade_mi_):
+            left = df_.cum_flength_mi_need_avail_before_seg
+            right = df_.cum_flength_mi_need_avail_after_seg
+            lookup_grade_mi_fil = (
+                lookup_grade_mi_.loc[
+                    lambda x: x.freeval_seg_jumps == df_.freeval_seg_jumps
+                ]
+                .assign(
+                    temp_cut=lambda df1: pd.cut(
+                        df1.cum_flength_mi, np.array([left, right])
+                    )
+                )
+                .loc[lambda x: ~x.temp_cut.isna()]
+            )
+            return (
+                lookup_grade_mi_fil.fgrade_impute.min(),
+                lookup_grade_mi_fil.fgrade_impute.max(),
+                (
+                    lookup_grade_mi_fil.fgrade_impute.max()
+                    - lookup_grade_mi_fil.fgrade_impute.min()
+                ),
+            )
+
+        (
+            custom_fields_grade["min_grade"],
+            custom_fields_grade["max_grade"],
+            custom_fields_grade["range_grade"],
+        ) = zip(
+            *custom_fields_grade.apply(
+                get_min_max_range_grade, lookup_grade_mi_=lookup_grade_mi, axis=1
+            )
+        )
+        self.custom_grade_stat_df = custom_fields_grade
+
+    def plot_grade_profile(self):
+        temp_plot = self.correct_sort_df_add_stat.merge(
+            self.custom_grade_stat_df, on=["freeval_seg_jumps", "name"]
+        ).rename(columns={"freeval_seg_jumps": "gap_in_name"})
+        fig = px.line(
+            temp_plot,
+            x="cum_flength_mi",
+            y="fgrade_impute",
+            title=f"Grade Profile for route-{self.st_rt_no} and direction {self.dir}",
+            line_dash="name",
+            color="gap_in_name",
+            hover_data=[
+                "name",
+                "cum_flength_mi_need_avail_before_seg",
+                "cum_flength_mi_need_avail_after_seg",
+                "min_grade",
+                "max_grade",
+                "range_grade",
+                "check_len_grade_range",
+                "seg_len",
+                "cty_code",
+                "dir_ind",
+                "fkey",
+                "fac_type",
+                "fseg",
+                "foffset",
+                "terrain_ty",
+            ],
+        )
+        fig.update_layout(yaxis=dict(range=[-8, 8]))
+        fig.update_yaxes(fixedrange=True)
+        plot(
+            fig,
+            filename=os.path.join(
+                self.path_processed_data,
+                f"grade_profile_route-{self.st_rt_no}_{self.dir}.html",
+            ),
+            auto_open=False,
+        )
 
     def test_max_2_county_in_name(self):
         """
@@ -382,17 +544,37 @@ if __name__ == "__main__":
     df_name = "grade_df_asc"
     df = grade_df_asc
     st_rt_no_ = 80
-    asc_grade_obj = gradepr.CleanGrade(
-        grade_df_asc_or_desc_=grade_df_asc,
+    asc_grade_obj = CleanGrade(
+        grade_df_asc_or_desc_=df,
         route=st_rt_no_,
-        grade_df_name_="grade_df_asc",
+        grade_df_name_=df_name,
         sort_order_ne_sw_=sort_order,
-        tolerance_fkey_misclass_per_=0,
+        tolerance_fkey_misclass_per_=1,
+        path_processed_data_=path_processed_data,
     )
     asc_grade_obj.clean_grade_df()
     asc_grade_obj.compute_grade_stats()
+    asc_grade_obj.plot_grade_profile()
 
-    temp = asc_grade_obj.correct_sort_df_add_stat.copy()
+    temp = asc_grade_obj.correct_sort_df_add_stat.copy().filter(
+        items=[
+            "freeval_seg_jumps",
+            "name",
+            "name_diff",
+            "bin_cum_flength_0_25mi",
+            "flength",
+            "bin_cum_flength_0_5mi",
+            "cum_flength_mi",
+            "fgrade_impute",
+            "cty_code",
+            "dir_ind",
+            "fkey",
+            "fac_type",
+            "fseg",
+            "foffset",
+            "terrain_ty",
+        ]
+    )
 
     def calc_seg_leg(seg_len_series):
         return seg_len_series.max() - seg_len_series.min()
@@ -408,9 +590,6 @@ if __name__ == "__main__":
                 "bin_cum_flength_0_5mi",
                 "cum_flength_mi",
                 "fgrade_impute",
-                "range_freeval_seg_grade",
-                "avg_grade_0_25",
-                "avg_grade_0_5",
             ]
         )
         .assign(
@@ -436,11 +615,11 @@ if __name__ == "__main__":
             seg_len=lambda df1: df1.seg_len_temp + df1.flength_mi_first,
             len_before_seg=lambda df1: df1.len_before_temp - df1.flength_mi_first,
             temp_0=0,
-            additional_len_need_half=lambda df1: (1 - df1.seg_len) / 2,
+            additional_len_need_half=lambda df1: (0.5 - df1.seg_len) / 2,
             additional_len_need_half_1=lambda df1: df1[
                 ["additional_len_need_half", "temp_0"]
             ].max(axis=1),
-            check_seg_longer_than_1mi=lambda df1: df1.seg_len >= 1,
+            check_seg_longer_than_1mi=lambda df1: df1.seg_len >= 0.5,
             len_need_avail_before_seg=lambda df1: df1[
                 ["additional_len_need_half_1", "len_before_seg"]
             ].min(axis=1),
@@ -497,4 +676,42 @@ if __name__ == "__main__":
         *temp_fil.apply(
             get_min_max_range_grade, lookup_grade_mi_=lookup_grade_mi, axis=1
         )
+    )
+
+    temp_plot = temp.merge(temp_fil, on=["freeval_seg_jumps", "name"]).rename(
+        columns={"freeval_seg_jumps": "gap_in_name"}
+    )
+    fig = px.line(
+        temp_plot,
+        x="cum_flength_mi",
+        y="fgrade_impute",
+        title=f"Grade Profile for route-{st_rt_no_} and direction {asc_grade_obj.dir}",
+        line_dash="name",
+        color="gap_in_name",
+        hover_data=[
+            "name",
+            "cum_flength_mi_need_avail_before_seg",
+            "cum_flength_mi_need_avail_after_seg",
+            "min_grade",
+            "max_grade",
+            "range_grade",
+            "check_len_grade_range",
+            "seg_len",
+            "cty_code",
+            "dir_ind",
+            "fkey",
+            "fac_type",
+            "fseg",
+            "foffset",
+            "terrain_ty",
+        ],
+    )
+    fig.update_layout(yaxis=dict(range=[-8, 8]))
+    fig.update_yaxes(fixedrange=True)
+    plot(
+        fig,
+        filename=os.path.join(
+            path_processed_data,
+            f"grade_profile_route-{st_rt_no_}_{asc_grade_obj.dir}.html",
+        ),
     )

@@ -59,17 +59,22 @@ if __name__ == "__main__":
             grade_df_name_="grade_df_asc",
             sort_order_ne_sw_=sort_order,
             tolerance_fkey_misclass_per_=0,
+            path_processed_data_=path_processed_data,
         )
         asc_grade_obj_dict[st_rt_no_].clean_grade_df()
         asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
+        asc_grade_obj_dict[st_rt_no_].plot_grade_profile()
 
+    desc_grade_obj_dict = {}
     for st_rt_no_ in set(grade_df_desc.st_rt_no):
-        asc_grade_obj_dict[st_rt_no_] = gradepr.CleanGrade(
+        desc_grade_obj_dict[st_rt_no_] = gradepr.CleanGrade(
             grade_df_asc_or_desc_=grade_df_desc,
             route=st_rt_no_,
             grade_df_name_="grade_df_desc",
             sort_order_ne_sw_=sort_order,
             tolerance_fkey_misclass_per_=1,
+            path_processed_data_=path_processed_data,
         )
-        asc_grade_obj_dict[st_rt_no_].clean_grade_df()
-        asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
+        desc_grade_obj_dict[st_rt_no_].clean_grade_df()
+        desc_grade_obj_dict[st_rt_no_].compute_grade_stats()
+        desc_grade_obj_dict[st_rt_no_].plot_grade_profile()

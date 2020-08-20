@@ -10,19 +10,23 @@ import sys
 
 
 class CleanGrade:
-    def __init__(self, grade_df_asc_or_desc_, route, grade_df_name_,
-                 sort_order_ne_sw_, tolerance_fkey_misclass_per_):
+    def __init__(
+        self,
+        grade_df_asc_or_desc_,
+        route,
+        grade_df_name_,
+        sort_order_ne_sw_,
+        tolerance_fkey_misclass_per_,
+    ):
         self.grade_df_asc_or_desc = grade_df_asc_or_desc_
         self.grade_df_name = grade_df_name_
         self.sort_order_ne_sw = sort_order_ne_sw_
         self.st_rt_no = route
         self.grade_df_asc_or_desc = (
-            self.grade_df_asc_or_desc
-                .query("st_rt_no == @route")
-                .sort_values(
-                    ["name", "fseg", "foffset"],
-                    ascending=sort_order_ne_sw_[grade_df_name_]
-                )
+            self.grade_df_asc_or_desc.query("st_rt_no == @route")
+            .sort_values(
+                ["name", "fseg", "foffset"], ascending=sort_order_ne_sw_[grade_df_name_]
+            )
             .drop_duplicates(["name", "fseg", "foffset"])
             .reset_index(drop=True)
         )
@@ -43,14 +47,14 @@ class CleanGrade:
         # Reorder the counties within a freeval segment based on above
         # corrections.
         correct_sort_df = (
-            self.grade_df_asc_or_desc
-                .merge(sort_order_corrector_df,
-                       on=["name", "cty_code"],
-                       how="inner")
-                .sort_values(["name", "cty_code_num", "fseg", "foffset"],
-                             ascending=[True] + self.sort_order_ne_sw[
-                                 self.grade_df_name])
-                .reset_index(drop=True)
+            self.grade_df_asc_or_desc.merge(
+                sort_order_corrector_df, on=["name", "cty_code"], how="inner"
+            )
+            .sort_values(
+                ["name", "cty_code_num", "fseg", "foffset"],
+                ascending=[True] + self.sort_order_ne_sw[self.grade_df_name],
+            )
+            .reset_index(drop=True)
         )
         self.correct_sort_df = correct_sort_df
         self.create_df_test_sort()
@@ -73,62 +77,56 @@ class CleanGrade:
         def func_bin_cut_flength(series, freq_=0.25):
             max_series = max(series)
             period_series = np.ceil(max_series / freq_)
-            index_intervals = \
-                pd.interval_range(start=0, periods=period_series, freq=freq_)
+            index_intervals = pd.interval_range(
+                start=0, periods=period_series, freq=freq_
+            )
             return pd.cut(series, index_intervals)
+
         # freeval_seg_jumps >=2; when there is a gap between freeval segment
         # names
-        correct_sort_df_new_stat = (
-            self.correct_sort_df
-            .assign(name_diff=lambda df1: df1.name.diff(),
-                    freeval_seg_jumps=lambda df1: df1.name_diff.ge(2).cumsum(),
-                    flength=lambda df1: df1.flength.fillna(21),
-                    fgrade_impute=lambda df1:
-                    df1.groupby("freeval_seg_jumps").fgrade.bfill().ffill(),
-                    cum_flength=lambda df1:
-                    df1.groupby("freeval_seg_jumps").flength.cumsum(),
-                    cum_flength_mi=lambda df1: df1.cum_flength / 5280,
-                    bin_cum_flength_0_25mi=lambda df1:
-                    df1.groupby("name").cum_flength_mi
-                    .transform(func_bin_cut_flength, freq_=0.25),
-                    bin_cum_flength_0_5mi=lambda df1:
-                    df1.groupby("name").cum_flength_mi
-                    .transform(func_bin_cut_flength, freq_=0.5),
-                    max_freeval_seg_grade=lambda df1:
-                    df1.groupby("name").fgrade
-                    .transform(max),
-                    min_freeval_seg_grade=lambda df1:
-                    df1.groupby("name").fgrade
-                    .transform(min),
-                    range_freeval_seg_grade=lambda df1:
-                    df1.groupby("name").fgrade
-                    .transform(lambda series: series.max() - series.min())
-                    )
+        correct_sort_df_new_stat = self.correct_sort_df.assign(
+            name_diff=lambda df1: df1.name.diff(),
+            freeval_seg_jumps=lambda df1: df1.name_diff.ge(2).cumsum(),
+            flength=lambda df1: df1.flength.fillna(21),
+            fgrade_impute=lambda df1: df1.groupby("freeval_seg_jumps")
+            .fgrade.bfill()
+            .ffill(),
+            cum_flength=lambda df1: df1.groupby("freeval_seg_jumps").flength.cumsum(),
+            cum_flength_mi=lambda df1: df1.cum_flength / 5280,
+            bin_cum_flength_0_25mi=lambda df1: df1.groupby(
+                "name"
+            ).cum_flength_mi.transform(func_bin_cut_flength, freq_=0.25),
+            bin_cum_flength_0_5mi=lambda df1: df1.groupby(
+                "name"
+            ).cum_flength_mi.transform(func_bin_cut_flength, freq_=0.5),
+            max_freeval_seg_grade=lambda df1: df1.groupby("name").fgrade.transform(max),
+            min_freeval_seg_grade=lambda df1: df1.groupby("name").fgrade.transform(min),
+            range_freeval_seg_grade=lambda df1: df1.groupby("name").fgrade.transform(
+                lambda series: series.max() - series.min()
+            ),
         )
 
         def func_weighted_avg(df1):
             return (df1.fgrade_impute * df1.flength).sum() / df1.flength.sum()
 
-        correct_sort_df_new_stat_1 = (
-            correct_sort_df_new_stat
-            .merge(
-                (correct_sort_df_new_stat
-                 .groupby(["name", "bin_cum_flength_0_25mi"])
-                 .apply(func_weighted_avg)
-                 .rename("avg_grade_0_25")
-                 .reset_index()),
-                on=["name", "bin_cum_flength_0_25mi"],
-                how="left"
-            )
-            .merge(
-                (correct_sort_df_new_stat
-                 .groupby(["name", "bin_cum_flength_0_5mi"])
-                 .apply(func_weighted_avg)
-                 .rename("avg_grade_0_5")
-                 .reset_index()),
-                on=["name", "bin_cum_flength_0_5mi"],
-                how="left"
-            )
+        correct_sort_df_new_stat_1 = correct_sort_df_new_stat.merge(
+            (
+                correct_sort_df_new_stat.groupby(["name", "bin_cum_flength_0_25mi"])
+                .apply(func_weighted_avg)
+                .rename("avg_grade_0_25")
+                .reset_index()
+            ),
+            on=["name", "bin_cum_flength_0_25mi"],
+            how="left",
+        ).merge(
+            (
+                correct_sort_df_new_stat.groupby(["name", "bin_cum_flength_0_5mi"])
+                .apply(func_weighted_avg)
+                .rename("avg_grade_0_5")
+                .reset_index()
+            ),
+            on=["name", "bin_cum_flength_0_5mi"],
+            how="left",
         )
         self.correct_sort_df_add_stat = correct_sort_df_new_stat_1
         # return correct_sort_df_new_stat_1
@@ -142,12 +140,14 @@ class CleanGrade:
         -------
 
         """
-        assert ((self.grade_df_asc_or_desc
-                 .groupby("name").cty_code.agg(lambda x: len(x.unique())).max()
-                 )
-                <= 2), (
+        assert (
+            self.grade_df_asc_or_desc.groupby("name")
+            .cty_code.agg(lambda x: len(x.unique()))
+            .max()
+        ) <= 2, (
             "The current cleaning algorithm will not work if number of"
-            "counties in a freeval segment are greater than 2.")
+            "counties in a freeval segment are greater than 2."
+        )
         print("At max 2 counties per freeval segment.")
 
     def fix_sort_order(self):
@@ -215,52 +215,57 @@ class CleanGrade:
         # has_correct_order_prev_next_freeval_seg
         # is true meaning there is a continuity in atleast one direction.
         incorrect_sort_df_fix_ord = (
-            self.grade_df_asc_or_desc
-            .groupby(["name", "cty_code"])
+            self.grade_df_asc_or_desc.groupby(["name", "cty_code"])
             .cty_code.agg(lambda x: len(x.unique()))
-            .rename("cty_code_count").reset_index()
-            .assign(cty_code_count=lambda x: x
-                    .groupby("name").cty_code_count.transform(sum),
-                    freeval_seg_jumps=lambda df1:
-                    df1.name.diff().ge(2).cumsum(),
-                    f_shift_cty_code=lambda df1:
-                    df1.groupby("freeval_seg_jumps")
-                    .cty_code.shift().fillna(df1.cty_code),
-                    b_shift_cty_code=lambda df1:
-                    df1.groupby("freeval_seg_jumps")
-                    .cty_code.shift(-1).fillna(df1.cty_code),
-                    cty_code_num=lambda x: x.groupby(
-                        "name").cty_code.cumcount(),
-                    test_correct_order_prev_grp=lambda x:
-                    (x.f_shift_cty_code - x.cty_code).eq(0),
-                    test_correct_order_next_grp=lambda x:
-                    (x.b_shift_cty_code - x.cty_code).eq(0),
-                    has_correct_order_prev_freeval_seg=lambda x:
-                    x.groupby("name")
-                    .test_correct_order_prev_grp.transform(max),
-                    has_correct_order_next_freeval_seg=lambda x:
-                    x.groupby("name")
-                    .test_correct_order_next_grp.transform(max),
-                    has_correct_order_prev_next_freeval_seg=lambda x:
-                    x.has_correct_order_prev_freeval_seg
-                    | x.has_correct_order_next_freeval_seg
-                    )
+            .rename("cty_code_count")
+            .reset_index()
+            .assign(
+                cty_code_count=lambda x: x.groupby("name").cty_code_count.transform(
+                    sum
+                ),
+                freeval_seg_jumps=lambda df1: df1.name.diff().ge(2).cumsum(),
+                f_shift_cty_code=lambda df1: df1.groupby("freeval_seg_jumps")
+                .cty_code.shift()
+                .fillna(df1.cty_code),
+                b_shift_cty_code=lambda df1: df1.groupby("freeval_seg_jumps")
+                .cty_code.shift(-1)
+                .fillna(df1.cty_code),
+                cty_code_num=lambda x: x.groupby("name").cty_code.cumcount(),
+                test_correct_order_prev_grp=lambda x: (
+                    x.f_shift_cty_code - x.cty_code
+                ).eq(0),
+                test_correct_order_next_grp=lambda x: (
+                    x.b_shift_cty_code - x.cty_code
+                ).eq(0),
+                has_correct_order_prev_freeval_seg=lambda x: x.groupby(
+                    "name"
+                ).test_correct_order_prev_grp.transform(max),
+                has_correct_order_next_freeval_seg=lambda x: x.groupby(
+                    "name"
+                ).test_correct_order_next_grp.transform(max),
+                has_correct_order_prev_next_freeval_seg=lambda x: x.has_correct_order_prev_freeval_seg
+                | x.has_correct_order_next_freeval_seg,
+            )
         )
         # Use cty_code_num and has_correct_order to reverse the order
         # nor gate. Would only work when freeval segment has at most
         # 2 counties
-        mask = lambda x: ~ x.has_correct_order_prev_next_freeval_seg
-        incorrect_sort_df_fix_ord.loc[mask, "cty_code_num"] = (
-            incorrect_sort_df_fix_ord
-            .loc[mask, ["cty_code_num",
-                        "has_correct_order_prev_next_freeval_seg"]]
-            .apply(lambda x: int(not (x[0] or x[1])), axis=1)
+        mask = lambda x: ~x.has_correct_order_prev_next_freeval_seg
+        incorrect_sort_df_fix_ord.loc[
+            mask, "cty_code_num"
+        ] = incorrect_sort_df_fix_ord.loc[
+            mask, ["cty_code_num", "has_correct_order_prev_next_freeval_seg"]
+        ].apply(
+            lambda x: int(not (x[0] or x[1])), axis=1
         )
-        correct_sort_df = (
-            incorrect_sort_df_fix_ord.filter(items=[
-                "name", "cty_code",
+        correct_sort_df = incorrect_sort_df_fix_ord.filter(
+            items=[
+                "name",
+                "cty_code",
                 "cty_code_num",
-                "has_correct_order_prev_next_freeval_seg"]))
+                "has_correct_order_prev_next_freeval_seg",
+            ]
+        )
         return correct_sort_df
 
     def create_df_test_sort(self):
@@ -272,32 +277,35 @@ class CleanGrade:
         # Check if the above sorting gives the correct order of counties.
         # if cty_code only changes within a freeval segment them we are good.
         self.correct_sort_df_test_df = (
-            self.correct_sort_df
-            .groupby(["name", "cty_code"])
+            self.correct_sort_df.groupby(["name", "cty_code"])
             .cty_code_num.first()
-            .rename("cty_code_num").reset_index()
+            .rename("cty_code_num")
+            .reset_index()
             .sort_values(["name", "cty_code_num"])
             .assign(
                 freeval_seg_jumps=lambda df1: df1.name.diff().ge(2).cumsum(),
                 f_shift_cty_code=lambda df1: df1.groupby("freeval_seg_jumps")
-                .cty_code.shift().fillna(df1.cty_code),
+                .cty_code.shift()
+                .fillna(df1.cty_code),
                 b_shift_cty_code=lambda df1: df1.groupby("freeval_seg_jumps")
-                .cty_code.shift(-1).fillna(df1.cty_code),
+                .cty_code.shift(-1)
+                .fillna(df1.cty_code),
                 cty_code_num=lambda x: x.groupby("name").cty_code.cumcount(),
-                test_correct_order_prev_grp=lambda x:
-                (x.f_shift_cty_code - x.cty_code).eq(0),
-                test_correct_order_next_grp=lambda x:
-                (x.b_shift_cty_code - x.cty_code).eq(0),
-                has_correct_order_prev_freeval_seg=lambda x:
-                x.groupby("name")
-                    .test_correct_order_prev_grp.transform(max),
-                has_correct_order_next_freeval_seg=lambda x:
-                x.groupby("name")
-                    .test_correct_order_next_grp.transform(max),
-                has_correct_order_prev_next_freeval_seg=lambda x:
-                x.has_correct_order_prev_freeval_seg
-                | x.has_correct_order_next_freeval_seg
-                )
+                test_correct_order_prev_grp=lambda x: (
+                    x.f_shift_cty_code - x.cty_code
+                ).eq(0),
+                test_correct_order_next_grp=lambda x: (
+                    x.b_shift_cty_code - x.cty_code
+                ).eq(0),
+                has_correct_order_prev_freeval_seg=lambda x: x.groupby(
+                    "name"
+                ).test_correct_order_prev_grp.transform(max),
+                has_correct_order_next_freeval_seg=lambda x: x.groupby(
+                    "name"
+                ).test_correct_order_next_grp.transform(max),
+                has_correct_order_prev_next_freeval_seg=lambda x: x.has_correct_order_prev_freeval_seg
+                | x.has_correct_order_next_freeval_seg,
+            )
         )
 
     def test_sort_order(self):
@@ -308,10 +316,13 @@ class CleanGrade:
         """
         # Check if the above sorting gives the correct order of counties.
         # if cty_code only changes within a freeval segment them we are good.
-        assert (self.correct_sort_df_test_df
-                .has_correct_order_prev_next_freeval_seg.all() == 1), (
+        assert (
+            self.correct_sort_df_test_df.has_correct_order_prev_next_freeval_seg.all()
+            == 1
+        ), (
             "Freeval segment going through different counties has issue"
-            "with sort order. Look into fix_sort_order function")
+            "with sort order. Look into fix_sort_order function"
+        )
         print("Freeval segment and county in correct sort order.")
 
     def test_fkey_order(self):
@@ -321,28 +332,33 @@ class CleanGrade:
 
         """
         # Check fkey increases by county within a freeval segment
-        bad_fkeys = sum(self.correct_sort_df
-                        .groupby(["name", "cty_code"])
-                        .fkey.diff() < 0)
+        bad_fkeys = sum(
+            self.correct_sort_df.groupby(["name", "cty_code"]).fkey.diff() < 0
+        )
         all_fkeys = self.correct_sort_df.fkey.count()
         percent_bad_fkey = 100 * bad_fkeys / all_fkeys
         assert percent_bad_fkey <= self.tolerance_fkey_misclass_per
-        print(f"fkey in correct sort order. Percent of bad fkeys: "
-              f"{percent_bad_fkey}")
+        print(
+            f"fkey in correct sort order. Percent of bad fkeys: " f"{percent_bad_fkey}"
+        )
 
 
 if __name__ == "__main__":
-    sys.path.append(r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
-                    r"\Documents\Github\Freeval-Data-Processing"
-                    r"\Feeval-PA Scripts\grade_data_processing")
+    sys.path.append(
+        r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
+        r"\Documents\Github\Freeval-Data-Processing"
+        r"\Feeval-PA Scripts\grade_data_processing"
+    )
     import grade_process_mod as gradepr  # noqa E402
 
     # 1.2 Set Global Parameters
     read_shape_file = False
-    path_to_data = (r'C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc'
-                    r'\Documents\Freeval-PA\grade_data'
-                    r'\June_23_2020')
-    path_to_grade_data_file = os.path.join(path_to_data, 'Processing.gdb')
+    path_to_data = (
+        r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
+        r"\Documents\Freeval-PA\grade_data"
+        r"\June_23_2020"
+    )
+    path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
     path_processed_data = os.path.join(path_to_data, "processed_data")
     if not os.path.exists(path_processed_data):
         os.mkdir(path_processed_data)
@@ -352,14 +368,17 @@ if __name__ == "__main__":
         path_to_grade_data_file=path_to_grade_data_file,
         path_processed_data=path_processed_data,
         read_saved_shp_csv=False,
-        read_saved_csv=True)
+        read_saved_csv=True,
+    )
 
     grade_df_dict = read_obj.data_read_switch()
 
-    grade_df_asc = grade_df_dict['grade_df_asc']
-    grade_df_desc = grade_df_dict['grade_df_desc']
-    sort_order = {"grade_df_asc": [True, True, True],
-                  "grade_df_desc": [True, False, False]}
+    grade_df_asc = grade_df_dict["grade_df_asc"]
+    grade_df_desc = grade_df_dict["grade_df_desc"]
+    sort_order = {
+        "grade_df_asc": [True, True, True],
+        "grade_df_desc": [True, False, False],
+    }
     df_name = "grade_df_asc"
     df = grade_df_asc
     st_rt_no_ = 80
@@ -368,7 +387,8 @@ if __name__ == "__main__":
         route=st_rt_no_,
         grade_df_name_="grade_df_asc",
         sort_order_ne_sw_=sort_order,
-        tolerance_fkey_misclass_per_=0)
+        tolerance_fkey_misclass_per_=0,
+    )
     asc_grade_obj.clean_grade_df()
     asc_grade_obj.compute_grade_stats()
 
@@ -378,20 +398,32 @@ if __name__ == "__main__":
         return seg_len_series.max() - seg_len_series.min()
 
     temp_fil = (
-        temp
-        .filter(items=[
-            "freeval_seg_jumps", "name", "name_diff", "bin_cum_flength_0_25mi",
-            "flength",
-            "bin_cum_flength_0_5mi", "cum_flength_mi", "fgrade_impute",
-            "range_freeval_seg_grade", "avg_grade_0_25", "avg_grade_0_5"])
+        temp.filter(
+            items=[
+                "freeval_seg_jumps",
+                "name",
+                "name_diff",
+                "bin_cum_flength_0_25mi",
+                "flength",
+                "bin_cum_flength_0_5mi",
+                "cum_flength_mi",
+                "fgrade_impute",
+                "range_freeval_seg_grade",
+                "avg_grade_0_25",
+                "avg_grade_0_5",
+            ]
+        )
         .assign(
             flength_mi_first=(
-                lambda df1: df1.groupby("name")
-                .flength.transform(lambda x: x.iloc[0] / 5280)),
+                lambda df1: df1.groupby("name").flength.transform(
+                    lambda x: x.iloc[0] / 5280
+                )
+            ),
             cum_flength_mi_reverse=(
-                lambda x: x.groupby("freeval_seg_jumps")
-                .cum_flength_mi
-                .transform(lambda x1: x1.max() - x1))
+                lambda x: x.groupby("freeval_seg_jumps").cum_flength_mi.transform(
+                    lambda x1: x1.max() - x1
+                )
+            ),
         )
         .groupby(["freeval_seg_jumps", "name"])
         .agg(
@@ -402,63 +434,67 @@ if __name__ == "__main__":
         )
         .assign(
             seg_len=lambda df1: df1.seg_len_temp + df1.flength_mi_first,
-            len_before_seg=lambda df1: df1.len_before_temp
-                                       - df1.flength_mi_first,
+            len_before_seg=lambda df1: df1.len_before_temp - df1.flength_mi_first,
             temp_0=0,
             additional_len_need_half=lambda df1: (1 - df1.seg_len) / 2,
-            additional_len_need_half_1=lambda df1:
-            df1[["additional_len_need_half", "temp_0"]].max(axis=1),
+            additional_len_need_half_1=lambda df1: df1[
+                ["additional_len_need_half", "temp_0"]
+            ].max(axis=1),
             check_seg_longer_than_1mi=lambda df1: df1.seg_len >= 1,
-            len_need_avail_before_seg=lambda df1:
-            df1[["additional_len_need_half_1", "len_before_seg"]]
-                .min(axis=1),
-            cum_flength_mi_need_avail_before_seg=lambda df1:
-            df1.len_before_seg - df1.len_need_avail_before_seg,
-            len_need_avail_after_seg=lambda df1:
-            df1[["additional_len_need_half_1", "len_after_seg"]]
-                .min(axis=1),
-            cum_flength_mi_need_avail_after_seg=lambda df1:
-            df1[["len_before_seg", "len_need_avail_after_seg", "seg_len"]]
-            .sum(axis=1),
-            check_len_grade_range=lambda df1:
-            df1.cum_flength_mi_need_avail_after_seg
-            - df1.cum_flength_mi_need_avail_before_seg
+            len_need_avail_before_seg=lambda df1: df1[
+                ["additional_len_need_half_1", "len_before_seg"]
+            ].min(axis=1),
+            cum_flength_mi_need_avail_before_seg=lambda df1: df1.len_before_seg
+            - df1.len_need_avail_before_seg,
+            len_need_avail_after_seg=lambda df1: df1[
+                ["additional_len_need_half_1", "len_after_seg"]
+            ].min(axis=1),
+            cum_flength_mi_need_avail_after_seg=lambda df1: df1[
+                ["len_before_seg", "len_need_avail_after_seg", "seg_len"]
+            ].sum(axis=1),
+            check_len_grade_range=lambda df1: df1.cum_flength_mi_need_avail_after_seg
+            - df1.cum_flength_mi_need_avail_before_seg,
         )
-        .filter(items=["freeval_seg_jumps", "name", "seg_len",
-                       "len_before_seg",
-                       "len_after_seg",
-                       "cum_flength_mi_need_avail_before_seg",
-                       "cum_flength_mi_need_avail_after_seg",
-                       "check_len_grade_range"])
+        .filter(
+            items=[
+                "freeval_seg_jumps",
+                "name",
+                "seg_len",
+                "len_before_seg",
+                "len_after_seg",
+                "cum_flength_mi_need_avail_before_seg",
+                "cum_flength_mi_need_avail_after_seg",
+                "check_len_grade_range",
+            ]
+        )
         .reset_index()
     )
 
-
-    lookup_grade_mi = (
-        temp
-        .filter(items=["freeval_seg_jumps", "cum_flength_mi",
-                       "fgrade_impute"])
+    lookup_grade_mi = temp.filter(
+        items=["freeval_seg_jumps", "cum_flength_mi", "fgrade_impute"]
     )
 
     def get_min_max_range_grade(df_, lookup_grade_mi_):
         left = df_.cum_flength_mi_need_avail_before_seg
         right = df_.cum_flength_mi_need_avail_after_seg
         lookup_grade_mi_fil = (
-            lookup_grade_mi_
-            .loc[lambda x: x.freeval_seg_jumps == df_.freeval_seg_jumps]
-            .assign(temp_cut=lambda df1:
-            pd.cut(df1.cum_flength_mi, np.array([left, right])))
-            .loc[lambda x: ~ x.temp_cut.isna()]
+            lookup_grade_mi_.loc[lambda x: x.freeval_seg_jumps == df_.freeval_seg_jumps]
+            .assign(
+                temp_cut=lambda df1: pd.cut(df1.cum_flength_mi, np.array([left, right]))
+            )
+            .loc[lambda x: ~x.temp_cut.isna()]
         )
-        return lookup_grade_mi_fil.fgrade_impute.min(), \
-            lookup_grade_mi_fil.fgrade_impute.max(), \
-            (lookup_grade_mi_fil.fgrade_impute.max()
-            - lookup_grade_mi_fil.fgrade_impute.min())
-
+        return (
+            lookup_grade_mi_fil.fgrade_impute.min(),
+            lookup_grade_mi_fil.fgrade_impute.max(),
+            (
+                lookup_grade_mi_fil.fgrade_impute.max()
+                - lookup_grade_mi_fil.fgrade_impute.min()
+            ),
+        )
 
     temp_fil["min_grade"], temp_fil["max_grade"], temp_fil["range_grade"] = zip(
         *temp_fil.apply(
-            get_min_max_range_grade,
-            lookup_grade_mi_=lookup_grade_mi,
-            axis=1)
+            get_min_max_range_grade, lookup_grade_mi_=lookup_grade_mi, axis=1
+        )
     )

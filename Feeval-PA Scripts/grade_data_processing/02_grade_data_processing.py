@@ -25,13 +25,14 @@ if not os.path.exists(path_processed_data):
 if __name__ == "__main__":
     # 2 read data and output smaller subsets
     # -----------------------------------------------------------------------------
-    grade_df_dict = gradepr.data_read_switch(
+    read_obj = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
         path_processed_data=path_processed_data,
         read_saved_shp_csv=False,
-        read_saved_csv=True,
-    )
+        read_saved_csv=True)
+
+    grade_df_dict = read_obj.data_read_switch()
     grade_df_asc = grade_df_dict['grade_df_asc']
     grade_df_desc = grade_df_dict['grade_df_desc']
 

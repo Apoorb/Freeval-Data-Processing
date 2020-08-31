@@ -10,19 +10,15 @@ import sys
 import numpy as np
 
 sys.path.append(
-    r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
-    r"\Documents\Github\Freeval-Data-Processing"
+    r"C:\Users\abibeka"
+    r"\Github\Freeval-Data-Processing"
     r"\Feeval-PA Scripts\grade_data_processing"
 )
 import grade_process_mod as gradepr  # noqa E402
 
 # 1.2 Set Global Parameters
 read_shape_file = False
-path_to_data = (
-    r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
-    r"\Documents\Freeval-PA\grade_data"
-    r"\June_23_2020"
-)
+path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\June_23_2020"
 path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
 path_processed_data = os.path.join(path_to_data, "processed_data")
 if not os.path.exists(path_processed_data):
@@ -63,7 +59,7 @@ if __name__ == "__main__":
         )
         asc_grade_obj_dict[st_rt_no_].clean_grade_df()
         asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
-        asc_grade_obj_dict[st_rt_no_].plot_grade_profile()
+        asc_grade_obj_dict[st_rt_no_].classify_freeval_seg()
 
     desc_grade_obj_dict = {}
     for st_rt_no_ in set(grade_df_desc.st_rt_no):
@@ -77,4 +73,33 @@ if __name__ == "__main__":
         )
         desc_grade_obj_dict[st_rt_no_].clean_grade_df()
         desc_grade_obj_dict[st_rt_no_].compute_grade_stats()
-        desc_grade_obj_dict[st_rt_no_].plot_grade_profile()
+        desc_grade_obj_dict[st_rt_no_].classify_freeval_seg()
+        # desc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=929)
+
+    path_freeval_grade_dat = os.path.join(path_processed_data, "freeval_grade_data")
+    if not os.path.exists(path_freeval_grade_dat):
+        os.mkdir(path_freeval_grade_dat)
+    path_freeval_grade_dat_asc = os.path.join(
+        path_freeval_grade_dat, "asc_seg_no_penndot"
+    )
+    if not os.path.exists(path_freeval_grade_dat_asc):
+        os.mkdir(path_freeval_grade_dat_asc)
+    for key, class_obj in asc_grade_obj_dict.items():
+        dir = class_obj.dir
+        path_to_out_file = os.path.join(
+            path_freeval_grade_dat_asc, f"route_{key}_dir_{dir}.csv"
+        )
+        class_obj.freeval_seg_grade_class.to_csv(path_to_out_file, index=False)
+
+    path_freeval_grade_dat_desc = os.path.join(
+        path_freeval_grade_dat, "desc_seg_no_penndot"
+    )
+    if not os.path.exists(path_freeval_grade_dat_desc):
+        os.mkdir(path_freeval_grade_dat_desc)
+
+    for key, class_obj in desc_grade_obj_dict.items():
+        dir = class_obj.dir
+        path_to_out_file = os.path.join(
+            path_freeval_grade_dat_desc, f"route_{key}_dir_{dir}.csv"
+        )
+        class_obj.freeval_seg_grade_class.to_csv(path_to_out_file, index=False)

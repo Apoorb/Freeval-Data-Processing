@@ -9,18 +9,14 @@ import os
 import sys
 
 sys.path.append(
-    r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
-    r"\Documents\Github\Freeval-Data-Processing"
+    r"C:\Users\abibeka"
+    r"\Github\Freeval-Data-Processing"
     r"\Feeval-PA Scripts\grade_data_processing"
 )
 import grade_process_mod as gradepr  # noqa E402
 
 # 1.2 Set Global Parameters
-path_to_data = (
-    r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc"
-    r"\Documents\Freeval-PA\grade_data"
-    r"\June_23_2020"
-)
+path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\June_23_2020"
 path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
 path_processed_data = os.path.join(path_to_data, "processed_data")
 
@@ -32,7 +28,7 @@ if __name__ == "__main__":
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
         path_processed_data=path_processed_data,
-        read_saved_shp_csv=True,
+        read_saved_shp_csv=False,
         read_saved_csv=False,
     )
     # 2 read data and output smaller subsets

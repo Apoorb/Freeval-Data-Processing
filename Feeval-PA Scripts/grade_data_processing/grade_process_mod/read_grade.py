@@ -94,14 +94,18 @@ class ReadGrade:
                 y_n = input(
                     "Directly reading GIS geodatabase is "
                     "expensive."
-                    "You have smaller subset of data saved as "
-                    ".shp. and .csv./n"
+                    " You have smaller subset of data saved as "
+                    ".shp. and .csv.\n"
                     "Do you want to continue this read "
                     "operation: (Y/N)"
                 )
                 if y_n.upper() == "N":
                     print("Use the saved .shp or .csv file parameters!")
                     return
+                elif y_n.upper() == "Y":
+                    print(
+                        "Be paitent. Processing raw geodatabase will take 30-40 mins."
+                    )
                 elif y_n.upper() != "N":
                     raise ValueError("Enter Y or N next time!")
             # fiona.listlayers(self.path_to_grade_data_file)
@@ -145,7 +149,7 @@ class ReadGrade:
     def read_raw_data(self):
         """Directly read the GIS geodatabase. Expensive operation."""
         gdf = gpd.read_file(
-            filename=self.grade_data_file, layer=self.layer_raw_grade_data
+            filename=self.path_to_grade_data_file, layer=self.layer_raw_grade_data
         )
         gdf.columns = [inflection.underscore(colname) for colname in gdf.columns]
         subset_gdf = gdf[

@@ -24,6 +24,20 @@ path_processed_data = os.path.join(path_to_data, "processed_data")
 if not os.path.exists(path_processed_data):
     os.mkdir(path_processed_data)
 
+path_freeval_grade_dat = os.path.join(path_processed_data, "freeval_grade_data")
+
+if not os.path.exists(path_freeval_grade_dat):
+    os.mkdir(path_freeval_grade_dat)
+path_freeval_grade_dat_asc = os.path.join(path_freeval_grade_dat, "asc_seg_no_penndot")
+if not os.path.exists(path_freeval_grade_dat_asc):
+    os.mkdir(path_freeval_grade_dat_asc)
+
+path_freeval_grade_dat_desc = os.path.join(
+    path_freeval_grade_dat, "desc_seg_no_penndot"
+)
+if not os.path.exists(path_freeval_grade_dat_desc):
+    os.mkdir(path_freeval_grade_dat_desc)
+
 if __name__ == "__main__":
     # 2 read data and output smaller subsets
     # -----------------------------------------------------------------------------
@@ -59,7 +73,13 @@ if __name__ == "__main__":
         )
         asc_grade_obj_dict[st_rt_no_].clean_grade_df()
         asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
-        asc_grade_obj_dict[st_rt_no_].classify_freeval_seg()
+        dir_1 = asc_grade_obj_dict[st_rt_no_].dir
+        path_to_out_file = os.path.join(
+            path_freeval_grade_dat_asc, f"route_{st_rt_no_}_dir_{dir_1}.csv"
+        )
+        asc_grade_obj_dict[st_rt_no_].freeval_seg_grade_class.to_csv(
+            path_to_out_file, index=False
+        )
 
     desc_grade_obj_dict = {}
     for st_rt_no_ in set(grade_df_desc.st_rt_no):
@@ -73,33 +93,11 @@ if __name__ == "__main__":
         )
         desc_grade_obj_dict[st_rt_no_].clean_grade_df()
         desc_grade_obj_dict[st_rt_no_].compute_grade_stats()
-        desc_grade_obj_dict[st_rt_no_].classify_freeval_seg()
         # desc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=929)
-
-    path_freeval_grade_dat = os.path.join(path_processed_data, "freeval_grade_data")
-    if not os.path.exists(path_freeval_grade_dat):
-        os.mkdir(path_freeval_grade_dat)
-    path_freeval_grade_dat_asc = os.path.join(
-        path_freeval_grade_dat, "asc_seg_no_penndot"
-    )
-    if not os.path.exists(path_freeval_grade_dat_asc):
-        os.mkdir(path_freeval_grade_dat_asc)
-    for key, class_obj in asc_grade_obj_dict.items():
-        dir = class_obj.dir
+        dir_1 = desc_grade_obj_dict[st_rt_no_].dir
         path_to_out_file = os.path.join(
-            path_freeval_grade_dat_asc, f"route_{key}_dir_{dir}.csv"
+            path_freeval_grade_dat_desc, f"route_{st_rt_no_}_dir_{dir_1}.csv"
         )
-        class_obj.freeval_seg_grade_class.to_csv(path_to_out_file, index=False)
-
-    path_freeval_grade_dat_desc = os.path.join(
-        path_freeval_grade_dat, "desc_seg_no_penndot"
-    )
-    if not os.path.exists(path_freeval_grade_dat_desc):
-        os.mkdir(path_freeval_grade_dat_desc)
-
-    for key, class_obj in desc_grade_obj_dict.items():
-        dir = class_obj.dir
-        path_to_out_file = os.path.join(
-            path_freeval_grade_dat_desc, f"route_{key}_dir_{dir}.csv"
+        desc_grade_obj_dict[st_rt_no_].freeval_seg_grade_class.to_csv(
+            path_to_out_file, index=False
         )
-        class_obj.freeval_seg_grade_class.to_csv(path_to_out_file, index=False)

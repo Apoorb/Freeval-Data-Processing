@@ -125,11 +125,30 @@ class CleanGrade:
             ),
         )
         self.correct_sort_df_add_stat = correct_sort_df_new_stat
+        self.classify_freeval_seg()
 
-    def classify_freeval_seg(self):
+    def classify_freeval_seg(
+        self,
+        max_grade_025specific_grade=3,
+        max_grade_05specific_grade=2,
+        max_grade_for_level=2,
+        tolerance_025_miles=0.02,
+        tolerance_05_miles=0.02,
+    ):
         """
         Use HCM 6th Ed definition to classify a segment as level, rolling, or having
         specific grade. Use heuristics to determine vertical curve.
+        Parameters
+        ----------
+        max_grade_025specific_grade: maximum grade for a 0.25 mile segment above which we
+        use specific grades. HCM 6th Ed has this as 3%.
+        max_grade_05specific_grade: maximum grade for a 0.5 mile segment above which we
+        use specific grades. HCM 6th Ed has this as 2%.
+        max_grade_for_level: maximum grade for a freeval segment above which we use
+        rolling or specfic grade.
+        Returns
+        -------
+        Dataframe with segment classification.
         """
         # Get grade summary stats in 0.25 mile sub-segments.
         # Check if the grade exceeds 3% in all of the 0.25 mile sub-segments
@@ -141,7 +160,7 @@ class CleanGrade:
             .assign(
                 specfic_grade_025=lambda df: df.groupby("name")[
                     "avg_grade_0_25"
-                ].transform(lambda x: x.ge(3).any()),
+                ].transform(lambda x: x.ge(max_grade_025specific_grade).any()),
             )
             .merge(
                 self.correct_sort_df_add_stat.groupby(
@@ -155,7 +174,9 @@ class CleanGrade:
                     ),
                     seg_len_interval=lambda df1: df1.interval_max
                     - df1.cum_flength_mi_max,
-                    seg_len_almost_025=lambda df1: df1.seg_len_interval.le(0.1),
+                    seg_len_almost_025=lambda df1: df1.seg_len_interval.le(
+                        tolerance_025_miles
+                    ),
                 )
                 .filter(items=["name", "bin_cum_flength_0_25mi", "seg_len_almost_025"]),
                 on=["name", "bin_cum_flength_0_25mi"],
@@ -172,7 +193,7 @@ class CleanGrade:
             .assign(
                 specfic_grade_05=lambda df: df.groupby("name")[
                     "avg_grade_0_5"
-                ].transform(lambda x: x.ge(2).any())
+                ].transform(lambda x: x.ge(max_grade_05specific_grade).any())
             )
             .merge(
                 self.correct_sort_df_add_stat.groupby(["name", "bin_cum_flength_0_5mi"])
@@ -184,7 +205,9 @@ class CleanGrade:
                     ),
                     seg_len_interval=lambda df1: df1.interval_max
                     - df1.cum_flength_mi_max,
-                    seg_len_almost_05=lambda df1: df1.seg_len_interval.le(0.1),
+                    seg_len_almost_05=lambda df1: df1.seg_len_interval.le(
+                        tolerance_05_miles
+                    ),
                 )
                 .filter(items=["name", "bin_cum_flength_0_5mi", "seg_len_almost_05"]),
                 on=["name", "bin_cum_flength_0_5mi"],
@@ -223,7 +246,10 @@ class CleanGrade:
             .apply(func_weighted_avg)
             .rename("avg_grade_freeval_seg")
             .reset_index()
-            .assign(grade_over_2=lambda df1: df1.avg_grade_freeval_seg >= 2)
+            .assign(
+                grade_over_2=lambda df1: df1.avg_grade_freeval_seg
+                >= max_grade_for_level
+            )
         )
 
         # Get segment length.
@@ -282,15 +308,9 @@ class CleanGrade:
             hcm_grade_cat=lambda df1: np.select(
                 [
                     df1.likely_vertical_curve,
+                    (df1.specfic_grade_025 | df1.specfic_grade_05),
                     (
-                        (df1.specfic_grade_025 | df1.specfic_grade_05)
-                        & (df1.seg_len >= 0.25)
-                    ),
-                    (
-                        (
-                            ~(df1.specfic_grade_025 | df1.specfic_grade_05)
-                            | (df1.seg_len < 0.25)
-                        )
+                        (~(df1.specfic_grade_025 | df1.specfic_grade_05))
                         & df1.grade_over_2
                     ),
                     (
@@ -307,6 +327,7 @@ class CleanGrade:
                 "avg_grade_freeval_seg",
                 "grade_over_2",
                 "seg_len",
+                "custom_len_vertical_curve_calc",
                 "likely_vertical_curve",
                 "max_grade_custom_05mi_search",
                 "range_grade_custom_05mi_search",
@@ -447,12 +468,15 @@ class CleanGrade:
         custom_fields_grade_fil = custom_fields_grade.assign(
             likely_vertical_curve=lambda df1: (df1.max_grade_custom_05mi_search > 2.5)
             & (df1.range_grade_custom_05mi_search > 6)
+        ).rename(
+            columns={"check_len_grade_range": "custom_len_vertical_curve_calc"}
         ).filter(
             items=[
                 "name",
                 "max_grade_custom_05mi_search",
                 "range_grade_custom_05mi_search",
                 "likely_vertical_curve",
+                "custom_len_vertical_curve_calc"
             ]
         )
         self.custom_grade_stat_df = custom_fields_grade_fil

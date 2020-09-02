@@ -73,6 +73,7 @@ if __name__ == "__main__":
         )
         asc_grade_obj_dict[st_rt_no_].clean_grade_df()
         asc_grade_obj_dict[st_rt_no_].compute_grade_stats()
+        # asc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=0)
         dir_1 = asc_grade_obj_dict[st_rt_no_].dir
         path_to_out_file = os.path.join(
             path_freeval_grade_dat_asc, f"route_{st_rt_no_}_dir_{dir_1}.csv"
@@ -93,7 +94,7 @@ if __name__ == "__main__":
         )
         desc_grade_obj_dict[st_rt_no_].clean_grade_df()
         desc_grade_obj_dict[st_rt_no_].compute_grade_stats()
-        # desc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=929)
+        # desc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=0)
         dir_1 = desc_grade_obj_dict[st_rt_no_].dir
         path_to_out_file = os.path.join(
             path_freeval_grade_dat_desc, f"route_{st_rt_no_}_dir_{dir_1}.csv"
@@ -101,3 +102,8 @@ if __name__ == "__main__":
         desc_grade_obj_dict[st_rt_no_].freeval_seg_grade_class.to_csv(
             path_to_out_file, index=False
         )
+
+    test = asc_grade_obj_dict[80].correct_sort_df_add_stat.query(
+        "name == 10008030100002"
+    )
+    test.fgrade_impute.describe()

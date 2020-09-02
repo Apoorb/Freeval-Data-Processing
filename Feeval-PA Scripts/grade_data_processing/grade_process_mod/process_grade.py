@@ -158,9 +158,7 @@ class CleanGrade:
             .rename("avg_grade_0_25")
             .reset_index()
             .assign(
-                specfic_grade_025=lambda df: df.groupby("name")[
-                    "avg_grade_0_25"
-                ].transform(lambda x: x.ge(max_grade_025specific_grade).any()),
+                specfic_grade_025=lambda df1: df1.avg_grade_0_25.ge(max_grade_025specific_grade),
             )
             .merge(
                 self.correct_sort_df_add_stat.groupby(
@@ -191,9 +189,8 @@ class CleanGrade:
             .rename("avg_grade_0_5")
             .reset_index()
             .assign(
-                specfic_grade_05=lambda df: df.groupby("name")[
-                    "avg_grade_0_5"
-                ].transform(lambda x: x.ge(max_grade_05specific_grade).any())
+                specfic_grade_05=lambda df1: df1.avg_grade_0_5.ge(
+                    max_grade_05specific_grade),
             )
             .merge(
                 self.correct_sort_df_add_stat.groupby(["name", "bin_cum_flength_0_5mi"])
@@ -220,7 +217,7 @@ class CleanGrade:
             correct_sort_df_add_stat_025.loc[lambda df1: df1.seg_len_almost_025]
             .groupby("name")
             .agg(
-                specfic_grade_025=("specfic_grade_025", all),
+                specfic_grade_025=("specfic_grade_025", any),
                 max_specfic_grade_025=("avg_grade_0_25", max),
             )
             .reset_index()
@@ -231,7 +228,7 @@ class CleanGrade:
             correct_sort_df_add_stat_05.loc[lambda df1: df1.seg_len_almost_05]
             .groupby("name")
             .agg(
-                specfic_grade_05=("specfic_grade_05", all),
+                specfic_grade_05=("specfic_grade_05", any),
                 max_specfic_grade_05=("avg_grade_0_5", max),
             )
             .reset_index()
@@ -261,6 +258,9 @@ class CleanGrade:
                     "flength",
                     "cum_flength_mi",
                     "terrain_ty",
+                    "min_freeval_seg_grade",
+                    "max_freeval_seg_grade",
+                    "range_freeval_seg_grade",
                 ]
             )
             .assign(
@@ -274,9 +274,12 @@ class CleanGrade:
             .agg(
                 flength_mi_first=("flength_mi_first", min),
                 seg_len_temp=("cum_flength_mi", calc_seg_leg),
+                min_freeval_seg_grade=("min_freeval_seg_grade", min),
+                max_freeval_seg_grade=("max_freeval_seg_grade", min),
+                range_freeval_seg_grade=("range_freeval_seg_grade", min),
             )
             .assign(seg_len=lambda df1: df1.seg_len_temp + df1.flength_mi_first,)
-            .filter(items=["freeval_seg_jumps", "name", "seg_len", "terrain_ty_list"])
+            .filter(items=["freeval_seg_jumps", "name", "seg_len", "min_freeval_seg_grade", "max_freeval_seg_grade", "range_freeval_seg_grade"])
             .reset_index(),
             on="name",
             how="inner",
@@ -325,6 +328,9 @@ class CleanGrade:
                 "name",
                 "hcm_grade_cat",
                 "avg_grade_freeval_seg",
+                "min_freeval_seg_grade",
+                "max_freeval_seg_grade",
+                "range_freeval_seg_grade",
                 "grade_over_2",
                 "seg_len",
                 "custom_len_vertical_curve_calc",
@@ -842,7 +848,6 @@ if __name__ == "__main__":
     )
     asc_grade_obj.clean_grade_df()
     asc_grade_obj.compute_grade_stats()
-    asc_grade_obj.classify_freeval_seg()
     # asc_grade_obj.get_grade_stats_by_custom_len()
 
     # asc_grade_obj.plot_grade_profile(elevation_start=929)

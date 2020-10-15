@@ -31,9 +31,31 @@ if __name__ == "__main__":
         read_saved_shp_csv=False,
         read_saved_csv=False,
     )
+    path_to_grade_data_file = os.path.join(path_to_data, "NewGeodatabase.gdb")
+    read_obj_new = gradepr.ReadGrade(
+        path_to_data=path_to_data,
+        path_to_grade_data_file=path_to_grade_data_file,
+        path_processed_data=path_processed_data,
+        layers_raw_grade_data=["I_376_NB_1_SR422_to_I80_GRADE",
+                                 "I_376_NB_2_I76_to_ConstitutionBlvd_GRADE",
+                                 "I_376_SB_1_I80_to_SR422_GRADE",
+                                 "I_376_SB_2_ConstitutionBlvd_to_I76_GRADE",
+                                 "I_76_NB_1_GRADE",
+                                 "I_76_SB_1_GRADE",
+                                 "PA_581_NB_1_GRADE",
+                                 "PA_581_SB_1_GRADE"],
+        read_saved_shp_csv=False,
+        read_saved_csv=False,
+    )
     # 2 read data and output smaller subsets
     # -----------------------------------------------------------------------------
     grade_df_dict = read_obj.data_read_switch()
+
+    # Read the new geoprocessing data
+    read_obj_new.data_read_switch(
+        grade_gdf_asc_save_loc="grade_gdf_asc_sort_i76_376_pa581",
+        grade_gdf_desc_save_loc="grade_gdf_desc_sort_i76_376_pa581"
+    )
 
     grade_df_asc = grade_df_dict["grade_df_asc"]
     grade_df_asc_sort = grade_df_asc.sort_values(

@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import glob
 
-# import fiona
+import fiona
 import shutil
 
 # FIXME: Add documentation
@@ -14,24 +14,27 @@ class ReadGrade:
         path_to_data,
         path_to_grade_data_file,
         path_processed_data,
+        layers_raw_grade_data=["SpatialJoin_GradeDataFINAL"],
         read_saved_shp_csv=False,
         read_saved_csv=True,
     ):
         self.path_to_data = path_to_data
         self.path_processed_data = path_processed_data
         self.path_to_grade_data_file = path_to_grade_data_file
-        self.layer_raw_grade_data = "SpatialJoin_GradeDataFINAL"
+        self.layers_raw_grade_data = layers_raw_grade_data
         self.read_saved_shp_csv = read_saved_shp_csv
         self.read_saved_csv = read_saved_csv
 
-    def data_read_switch(self):
+    def data_read_switch(self,
+                         grade_gdf_asc_save_loc="grade_gdf_asc_sort",
+                         grade_gdf_desc_save_loc="grade_gdf_desc_sort"):
         if (
             self.read_saved_shp_csv
             & (
                 len(
                     glob.glob(
                         os.path.join(
-                            self.path_processed_data, "grade_gdf_asc_sort", "*.shp"
+                            self.path_processed_data, grade_gdf_asc_save_loc, "*.shp"
                         )
                     )
                 )
@@ -40,7 +43,7 @@ class ReadGrade:
             & len(
                 glob.glob(
                     os.path.join(
-                        self.path_processed_data, "grade_gdf_desc_sort", "*.shp"
+                        self.path_processed_data, grade_gdf_desc_save_loc, "*.shp"
                     )
                 )
             )
@@ -48,18 +51,20 @@ class ReadGrade:
         ):
             # Read the data if above conditions met
             grade_gdf_asc_sort = self.read_subset_dat_by_dir(
-                shapefile_nm="grade_gdf_asc_sort"
+                shapefile_nm=grade_gdf_asc_save_loc
             )
             grade_gdf_desc_sort = self.read_subset_dat_by_dir(
-                shapefile_nm="grade_gdf_desc_sort"
+                shapefile_nm=grade_gdf_desc_save_loc
             )
             grade_df_asc = pd.read_csv(
-                os.path.join(self.path_to_data, "processed_data", "grade_asc_data.csv"),
+                os.path.join(self.path_to_data, "processed_data",
+                             f"{grade_gdf_asc_save_loc}.csv"),
                 index_col=0,
             )
             grade_df_desc = pd.read_csv(
                 os.path.join(
-                    self.path_to_data, "processed_data", "grade_desc_data.csv"
+                    self.path_to_data, "processed_data",
+                    f"{grade_gdf_desc_save_loc}.csv"
                 ),
                 index_col=0,
             )
@@ -75,7 +80,7 @@ class ReadGrade:
                 len(
                     glob.glob(
                         os.path.join(
-                            self.path_processed_data, "grade_gdf_asc_sort", "*.shp"
+                            self.path_processed_data, grade_gdf_asc_save_loc, "*.shp"
                         )
                     )
                 )
@@ -84,7 +89,7 @@ class ReadGrade:
                 len(
                     glob.glob(
                         os.path.join(
-                            self.path_processed_data, "grade_gdf_desc_sort", "*.shp"
+                            self.path_processed_data, grade_gdf_desc_save_loc, "*.shp"
                         )
                     )
                 )
@@ -108,7 +113,7 @@ class ReadGrade:
                     )
                 elif y_n.upper() != "N":
                     raise ValueError("Enter Y or N next time!")
-            # fiona.listlayers(self.path_to_grade_data_file)
+            fiona.listlayers(self.path_to_grade_data_file)
             grade_gdf = self.read_raw_data()
             grade_gdf_asc_sort, grade_gdf_desc_sort = self.create_subset_dat(
                 grade_gdf=grade_gdf
@@ -116,13 +121,15 @@ class ReadGrade:
             self.save_subset_dat_by_dir(
                 grade_gdf_asc_sort=grade_gdf_asc_sort,
                 grade_gdf_desc_sort=grade_gdf_desc_sort,
+                grade_gdf_asc_save_loc=grade_gdf_asc_save_loc,
+                grade_gdf_desc_save_loc=grade_gdf_desc_save_loc
             )
             grade_df_asc = pd.read_csv(
-                os.path.join(self.path_processed_data, "grade_asc_data.csv"),
+                os.path.join(self.path_processed_data, f"{grade_gdf_asc_save_loc}.csv"),
                 index_col=0,
             )
             grade_df_desc = pd.read_csv(
-                os.path.join(self.path_processed_data, "grade_desc_data.csv"),
+                os.path.join(self.path_processed_data, f"{grade_gdf_desc_save_loc}.csv"),
                 index_col=0,
             )
             return_dict = {
@@ -134,11 +141,11 @@ class ReadGrade:
             return return_dict
         elif self.read_saved_csv:
             grade_df_asc = pd.read_csv(
-                os.path.join(self.path_processed_data, "grade_asc_data.csv"),
+                os.path.join(self.path_processed_data, f"{grade_gdf_asc_save_loc}.csv"),
                 index_col=0,
             )
             grade_df_desc = pd.read_csv(
-                os.path.join(self.path_processed_data, "grade_desc_data.csv"),
+                os.path.join(self.path_processed_data, f"{grade_gdf_desc_save_loc}.csv"),
                 index_col=0,
             )
             return_dict = {"grade_df_asc": grade_df_asc, "grade_df_desc": grade_df_desc}
@@ -148,12 +155,18 @@ class ReadGrade:
 
     def read_raw_data(self):
         """Directly read the GIS geodatabase. Expensive operation."""
-        gdf = gpd.read_file(
-            filename=self.path_to_grade_data_file, layer=self.layer_raw_grade_data
-        )
+        list_gdf = []
+        for layer_ in self.layers_raw_grade_data:
+            list_gdf.append(
+                gpd.read_file(
+                    filename=self.path_to_grade_data_file,
+                    layer=layer_
+                )
+            )
+        gdf = pd.concat(list_gdf)
         gdf.columns = [inflection.underscore(colname) for colname in gdf.columns]
-        subset_gdf = gdf[
-            [
+        subset_gdf = gdf.filter(
+            items=[
                 "name",
                 "juris",
                 "cty_code",
@@ -182,7 +195,7 @@ class ReadGrade:
                 "fac_type",
                 "geometry",
             ]
-        ]
+        )
         return subset_gdf
 
     def create_subset_dat(self, grade_gdf):
@@ -211,7 +224,11 @@ class ReadGrade:
         )
         return grade_gdf_asc_sort, grade_gdf_desc_sort
 
-    def save_subset_dat_by_dir(self, grade_gdf_asc_sort, grade_gdf_desc_sort):
+    def save_subset_dat_by_dir(self,
+                               grade_gdf_asc_sort,
+                               grade_gdf_desc_sort,
+                               grade_gdf_asc_save_loc="grade_gdf_asc_sort",
+                               grade_gdf_desc_save_loc="grade_gdf_desc_sort"):
         """
         Parameters
         ----------
@@ -222,20 +239,20 @@ class ReadGrade:
         -------
 
         """
-        if os.path.exists(os.path.join(self.path_processed_data, "grade_gdf_asc_sort")):
-            shutil.rmtree(os.path.join(self.path_processed_data, "grade_gdf_asc_sort"))
-        os.mkdir(os.path.join(self.path_processed_data, "grade_gdf_asc_sort"))
+        if os.path.exists(os.path.join(self.path_processed_data, grade_gdf_asc_save_loc)):
+            shutil.rmtree(os.path.join(self.path_processed_data, grade_gdf_asc_save_loc))
+        os.mkdir(os.path.join(self.path_processed_data, grade_gdf_asc_save_loc))
 
         if os.path.exists(
-            os.path.join(self.path_processed_data, "grade_gdf_desc_sort")
+            os.path.join(self.path_processed_data, grade_gdf_desc_save_loc)
         ):
-            shutil.rmtree(os.path.join(self.path_processed_data, "grade_gdf_desc_sort"))
-        os.mkdir(os.path.join(self.path_processed_data, "grade_gdf_desc_sort"))
+            shutil.rmtree(os.path.join(self.path_processed_data, grade_gdf_desc_save_loc))
+        os.mkdir(os.path.join(self.path_processed_data, grade_gdf_desc_save_loc))
         grade_gdf_asc_sort_outfile = os.path.join(
-            self.path_processed_data, "grade_gdf_asc_sort", "grade_gdf_asc_sort.shp"
+            self.path_processed_data, grade_gdf_asc_save_loc, f"{grade_gdf_asc_save_loc}.shp"
         )
         grade_gdf_desc_sort_outfile = os.path.join(
-            self.path_processed_data, "grade_gdf_desc_sort", "grade_gdf_desc_sort.shp"
+            self.path_processed_data, grade_gdf_desc_save_loc, f"{grade_gdf_desc_save_loc}.shp"
         )
         grade_gdf_asc_sort.to_file(
             driver="ESRI Shapefile", filename=grade_gdf_asc_sort_outfile
@@ -246,10 +263,10 @@ class ReadGrade:
         grade_df_asc = pd.DataFrame(grade_gdf_asc_sort.drop(columns="geometry"))
         grade_df_desc = pd.DataFrame(grade_gdf_desc_sort.drop(columns="geometry"))
         grade_df_asc.to_csv(
-            os.path.join(self.path_processed_data, "grade_asc_data.csv")
+            os.path.join(self.path_processed_data, f"{grade_gdf_asc_save_loc}.csv")
         )
         grade_df_desc.to_csv(
-            os.path.join(self.path_processed_data, "grade_desc_data.csv")
+            os.path.join(self.path_processed_data, f"{grade_gdf_desc_save_loc}.csv")
         )
         return 1
 

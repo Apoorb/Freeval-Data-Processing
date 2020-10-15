@@ -8,6 +8,7 @@ import sys
 import plotly.express as px
 from plotly.offline import plot
 from plotly.subplots import make_subplots
+import grade_process_mod as gradepr
 
 # FIXME: Add documentation
 
@@ -98,7 +99,8 @@ class CleanGrade:
             fgrade_impute=lambda df1: df1.groupby("freeval_seg_jumps")
             .fgrade.bfill()
             .ffill()
-            .rolling(grade_smoothening_window).mean(),
+            .rolling(grade_smoothening_window)
+            .mean(),
             cum_flength=lambda df1: df1.groupby("freeval_seg_jumps").flength.cumsum(),
             cum_elevation_tp=lambda df1: df1.flength * df1.fgrade_impute / 100,
             cum_elevation_relative=lambda df1: (df1.cum_elevation_tp.cumsum()),
@@ -143,12 +145,18 @@ class CleanGrade:
         # Get average grade by segment.
         correct_sort_df_add_stat_agg = (
             self.correct_sort_df_add_stat.filter(
-                items=["freeval_seg_jumps", "name", "q85_freeval_seg_grade",
-                       "avg_grade_freeval_seg"]
+                items=[
+                    "freeval_seg_jumps",
+                    "name",
+                    "q85_freeval_seg_grade",
+                    "avg_grade_freeval_seg",
+                ]
             )
             .groupby(["name"])
-            .agg(q85_freeval_seg_grade=("q85_freeval_seg_grade", min),
-                 avg_grade_freeval_seg=("avg_grade_freeval_seg", min))
+            .agg(
+                q85_freeval_seg_grade=("q85_freeval_seg_grade", min),
+                avg_grade_freeval_seg=("avg_grade_freeval_seg", min),
+            )
             .reset_index()
             .assign(
                 grade_over_2=lambda df1: df1.q85_freeval_seg_grade >= 2,
@@ -222,16 +230,16 @@ class CleanGrade:
             hcm_grade_cat=lambda df1: np.select(
                 [
                     df1.likely_vertical_curve,
-                    df1.likely_grade_change & (~ df1.grade_over_2),
+                    df1.likely_grade_change & (~df1.grade_over_2),
                     df1.likely_grade_change,
                     (df1.seg_len_over_025 & df1.grade_over_3)
                     | (df1.seg_len_over_05 & df1.grade_over_2),
                     df1.grade_over_2,
                     (~df1.grade_over_2),
                 ],
-                ["VMG", "level", "SMG", "Specific Grade", "Rolling", "Level"],
+                ["VMG", "level", "VMG", "Specific Grade", "Rolling", "Level"],
             )
-            #VMG: Variable mountainous grade; SMG: Specific: mountainous grade.
+            # VMG: Variable mountainous grade
         ).reindex(
             columns=[
                 "name",
@@ -595,11 +603,11 @@ if __name__ == "__main__":
         r"\Github\Freeval-Data-Processing"
         r"\Feeval-PA Scripts\grade_data_processing"
     )
-    import grade_process_mod as gradepr  # noqa E402
 
     # 1.2 Set Global Parameters
     read_shape_file = False
-    path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\June_23_2020"
+    path_to_data = r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents" \
+                   r"\freeval_pa\grade_data\June_23_2020"
     path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
     path_processed_data = os.path.join(path_to_data, "processed_data")
     if not os.path.exists(path_processed_data):
@@ -622,7 +630,7 @@ if __name__ == "__main__":
     }
     df_name = "grade_df_asc"
     df = grade_df_asc
-    st_rt_no_ = 95
+    st_rt_no_ = 80
 
     asc_grade_obj = CleanGrade(
         grade_df_asc_or_desc_=df,
@@ -634,7 +642,7 @@ if __name__ == "__main__":
     )
     asc_grade_obj.clean_grade_df()
     asc_grade_obj.compute_grade_stats()
-    asc_grade_obj.plot_grade_profile(elevation_start=0)
+    asc_grade_obj.plot_grade_profile(elevation_start=928)
 
     df_name = "grade_df_desc"
     df = grade_df_desc

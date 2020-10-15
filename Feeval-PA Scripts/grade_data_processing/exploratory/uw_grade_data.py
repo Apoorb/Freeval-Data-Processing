@@ -18,9 +18,7 @@ shuyi_dir = (
 )
 import numpy as np, os, pandas as pd
 
-grade_uw = np.genfromtxt(
-    os.path.join(shuyi_dir, "grades_I80_PA.txt"), delimiter=","
-)
+grade_uw = np.genfromtxt(os.path.join(shuyi_dir, "grades_I80_PA.txt"), delimiter=",")
 
 miles_uw = np.genfromtxt(os.path.join(shuyi_dir, "miles_I80_PA.txt"), delimiter=",")
 
@@ -28,7 +26,7 @@ data_uw = pd.DataFrame({"milepost": miles_uw, "grade_percent": grade_uw})
 data_uw_fil = data_uw.query("grade_percent >= -8 & grade_percent < 8")
 data_uw_fil.loc[:, "seg_len"] = data_uw_fil.milepost.diff().fillna(0)
 data_uw_fil.loc[:, "height"] = (data_uw_fil.seg_len * 5280) * (
-        data_uw_fil.grade_percent / 100
+    data_uw_fil.grade_percent / 100
 )
 data_uw_fil.loc[:, "elevation_in_ft"] = data_uw_fil.height.cumsum() + 929
 fig = make_subplots(
@@ -41,9 +39,9 @@ fig = make_subplots(
     ),
 )
 
-data_grade_uw = px.line(data_uw_fil, x="milepost", y="grade_percent", )["data"]
+data_grade_uw = px.line(data_uw_fil, x="milepost", y="grade_percent",)["data"]
 
-data_elevation_uw = px.line(data_uw_fil, x="milepost", y="elevation_in_ft", )["data"]
+data_elevation_uw = px.line(data_uw_fil, x="milepost", y="elevation_in_ft",)["data"]
 
 for dat1, dat2 in zip(data_grade_uw, data_elevation_uw):
     fig.add_trace(dat1, row=1, col=1)

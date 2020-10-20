@@ -13,38 +13,36 @@ class ReadGrade:
         self,
         path_to_data,
         path_to_grade_data_file,
-        path_processed_data,
+        path_interim,
         layers_raw_grade_data=["SpatialJoin_GradeDataFINAL"],
         read_saved_shp_csv=False,
         read_saved_csv=True,
     ):
         self.path_to_data = path_to_data
-        self.path_processed_data = path_processed_data
+        self.path_interim = path_interim
         self.path_to_grade_data_file = path_to_grade_data_file
         self.layers_raw_grade_data = layers_raw_grade_data
         self.read_saved_shp_csv = read_saved_shp_csv
         self.read_saved_csv = read_saved_csv
 
-    def data_read_switch(self,
-                         grade_gdf_asc_save_loc="grade_gdf_asc_sort",
-                         grade_gdf_desc_save_loc="grade_gdf_desc_sort"):
+    def data_read_switch(
+        self,
+        grade_gdf_asc_save_loc="grade_gdf_asc_sort",
+        grade_gdf_desc_save_loc="grade_gdf_desc_sort",
+    ):
         if (
             self.read_saved_shp_csv
             & (
                 len(
                     glob.glob(
-                        os.path.join(
-                            self.path_processed_data, grade_gdf_asc_save_loc, "*.shp"
-                        )
+                        os.path.join(self.path_interim, grade_gdf_asc_save_loc, "*.shp")
                     )
                 )
                 == 1
             )
             & len(
                 glob.glob(
-                    os.path.join(
-                        self.path_processed_data, grade_gdf_desc_save_loc, "*.shp"
-                    )
+                    os.path.join(self.path_interim, grade_gdf_desc_save_loc, "*.shp")
                 )
             )
             == 1
@@ -57,14 +55,16 @@ class ReadGrade:
                 shapefile_nm=grade_gdf_desc_save_loc
             )
             grade_df_asc = pd.read_csv(
-                os.path.join(self.path_to_data, "processed_data",
-                             f"{grade_gdf_asc_save_loc}.csv"),
+                os.path.join(
+                    self.path_to_data, "processed_data", f"{grade_gdf_asc_save_loc}.csv"
+                ),
                 index_col=0,
             )
             grade_df_desc = pd.read_csv(
                 os.path.join(
-                    self.path_to_data, "processed_data",
-                    f"{grade_gdf_desc_save_loc}.csv"
+                    self.path_to_data,
+                    "processed_data",
+                    f"{grade_gdf_desc_save_loc}.csv",
                 ),
                 index_col=0,
             )
@@ -79,9 +79,7 @@ class ReadGrade:
             if (
                 len(
                     glob.glob(
-                        os.path.join(
-                            self.path_processed_data, grade_gdf_asc_save_loc, "*.shp"
-                        )
+                        os.path.join(self.path_interim, grade_gdf_asc_save_loc, "*.shp")
                     )
                 )
                 == 1
@@ -89,7 +87,7 @@ class ReadGrade:
                 len(
                     glob.glob(
                         os.path.join(
-                            self.path_processed_data, grade_gdf_desc_save_loc, "*.shp"
+                            self.path_interim, grade_gdf_desc_save_loc, "*.shp"
                         )
                     )
                 )
@@ -122,14 +120,14 @@ class ReadGrade:
                 grade_gdf_asc_sort=grade_gdf_asc_sort,
                 grade_gdf_desc_sort=grade_gdf_desc_sort,
                 grade_gdf_asc_save_loc=grade_gdf_asc_save_loc,
-                grade_gdf_desc_save_loc=grade_gdf_desc_save_loc
+                grade_gdf_desc_save_loc=grade_gdf_desc_save_loc,
             )
             grade_df_asc = pd.read_csv(
-                os.path.join(self.path_processed_data, f"{grade_gdf_asc_save_loc}.csv"),
+                os.path.join(self.path_interim, f"{grade_gdf_asc_save_loc}.csv"),
                 index_col=0,
             )
             grade_df_desc = pd.read_csv(
-                os.path.join(self.path_processed_data, f"{grade_gdf_desc_save_loc}.csv"),
+                os.path.join(self.path_interim, f"{grade_gdf_desc_save_loc}.csv"),
                 index_col=0,
             )
             return_dict = {
@@ -141,11 +139,11 @@ class ReadGrade:
             return return_dict
         elif self.read_saved_csv:
             grade_df_asc = pd.read_csv(
-                os.path.join(self.path_processed_data, f"{grade_gdf_asc_save_loc}.csv"),
+                os.path.join(self.path_interim, f"{grade_gdf_asc_save_loc}.csv"),
                 index_col=0,
             )
             grade_df_desc = pd.read_csv(
-                os.path.join(self.path_processed_data, f"{grade_gdf_desc_save_loc}.csv"),
+                os.path.join(self.path_interim, f"{grade_gdf_desc_save_loc}.csv"),
                 index_col=0,
             )
             return_dict = {"grade_df_asc": grade_df_asc, "grade_df_desc": grade_df_desc}
@@ -158,10 +156,7 @@ class ReadGrade:
         list_gdf = []
         for layer_ in self.layers_raw_grade_data:
             list_gdf.append(
-                gpd.read_file(
-                    filename=self.path_to_grade_data_file,
-                    layer=layer_
-                )
+                gpd.read_file(filename=self.path_to_grade_data_file, layer=layer_)
             )
         gdf = pd.concat(list_gdf)
         gdf.columns = [inflection.underscore(colname) for colname in gdf.columns]
@@ -224,11 +219,13 @@ class ReadGrade:
         )
         return grade_gdf_asc_sort, grade_gdf_desc_sort
 
-    def save_subset_dat_by_dir(self,
-                               grade_gdf_asc_sort,
-                               grade_gdf_desc_sort,
-                               grade_gdf_asc_save_loc="grade_gdf_asc_sort",
-                               grade_gdf_desc_save_loc="grade_gdf_desc_sort"):
+    def save_subset_dat_by_dir(
+        self,
+        grade_gdf_asc_sort,
+        grade_gdf_desc_sort,
+        grade_gdf_asc_save_loc="grade_gdf_asc_sort",
+        grade_gdf_desc_save_loc="grade_gdf_desc_sort",
+    ):
         """
         Parameters
         ----------
@@ -239,20 +236,20 @@ class ReadGrade:
         -------
 
         """
-        if os.path.exists(os.path.join(self.path_processed_data, grade_gdf_asc_save_loc)):
-            shutil.rmtree(os.path.join(self.path_processed_data, grade_gdf_asc_save_loc))
-        os.mkdir(os.path.join(self.path_processed_data, grade_gdf_asc_save_loc))
+        if os.path.exists(os.path.join(self.path_interim, grade_gdf_asc_save_loc)):
+            shutil.rmtree(os.path.join(self.path_interim, grade_gdf_asc_save_loc))
+        os.mkdir(os.path.join(self.path_interim, grade_gdf_asc_save_loc))
 
-        if os.path.exists(
-            os.path.join(self.path_processed_data, grade_gdf_desc_save_loc)
-        ):
-            shutil.rmtree(os.path.join(self.path_processed_data, grade_gdf_desc_save_loc))
-        os.mkdir(os.path.join(self.path_processed_data, grade_gdf_desc_save_loc))
+        if os.path.exists(os.path.join(self.path_interim, grade_gdf_desc_save_loc)):
+            shutil.rmtree(os.path.join(self.path_interim, grade_gdf_desc_save_loc))
+        os.mkdir(os.path.join(self.path_interim, grade_gdf_desc_save_loc))
         grade_gdf_asc_sort_outfile = os.path.join(
-            self.path_processed_data, grade_gdf_asc_save_loc, f"{grade_gdf_asc_save_loc}.shp"
+            self.path_interim, grade_gdf_asc_save_loc, f"{grade_gdf_asc_save_loc}.shp",
         )
         grade_gdf_desc_sort_outfile = os.path.join(
-            self.path_processed_data, grade_gdf_desc_save_loc, f"{grade_gdf_desc_save_loc}.shp"
+            self.path_interim,
+            grade_gdf_desc_save_loc,
+            f"{grade_gdf_desc_save_loc}.shp",
         )
         grade_gdf_asc_sort.to_file(
             driver="ESRI Shapefile", filename=grade_gdf_asc_sort_outfile
@@ -263,10 +260,10 @@ class ReadGrade:
         grade_df_asc = pd.DataFrame(grade_gdf_asc_sort.drop(columns="geometry"))
         grade_df_desc = pd.DataFrame(grade_gdf_desc_sort.drop(columns="geometry"))
         grade_df_asc.to_csv(
-            os.path.join(self.path_processed_data, f"{grade_gdf_asc_save_loc}.csv")
+            os.path.join(self.path_interim, f"{grade_gdf_asc_save_loc}.csv")
         )
         grade_df_desc.to_csv(
-            os.path.join(self.path_processed_data, f"{grade_gdf_desc_save_loc}.csv")
+            os.path.join(self.path_interim, f"{grade_gdf_desc_save_loc}.csv")
         )
         return 1
 
@@ -282,7 +279,7 @@ class ReadGrade:
 
         """
         input_file = os.path.join(
-            self.path_processed_data, shapefile_nm, f"{shapefile_nm}.shp"
+            self.path_interim, shapefile_nm, f"{shapefile_nm}.shp"
         )
         gdf = gpd.read_file(filename=input_file)
         return gdf

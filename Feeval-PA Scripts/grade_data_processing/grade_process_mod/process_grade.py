@@ -30,12 +30,14 @@ class CleanGrade:
         sort_order_ne_sw_,
         tolerance_fkey_misclass_per_,
         path_processed_data_,
+        path_issue_,
     ):
         self.grade_df_asc_or_desc = grade_df_asc_or_desc_
         self.grade_df_name = grade_df_name_
         self.sort_order_ne_sw = sort_order_ne_sw_
         self.st_rt_no = route
         self.path_processed_data = path_processed_data_
+        self.path_issue = path_issue_
         self.grade_df_asc_or_desc = (
             self.grade_df_asc_or_desc.query("st_rt_no == @route")
             .sort_values(
@@ -332,7 +334,6 @@ class CleanGrade:
                 "fac_type",
                 "fseg",
                 "foffset",
-                "terrain_ty",
             ],
         )["data"]
 
@@ -366,7 +367,6 @@ class CleanGrade:
                 "fac_type",
                 "fseg",
                 "foffset",
-                "terrain_ty",
             ],
         )["data"]
 
@@ -388,12 +388,12 @@ class CleanGrade:
         # if y_ == "fgrade_impute":
         #     fig.update_layout(yaxis=dict(range=[-8, 8]))
         # fig.update_yaxes(fixedrange=True)
-        if not os.path.exists(os.path.join(self.path_processed_data, "debug_plots")):
-            os.mkdir(os.path.join(self.path_processed_data, "debug_plots"))
+        if not os.path.exists(os.path.join(self.path_issue, "debug_plots")):
+            os.mkdir(os.path.join(self.path_issue, "debug_plots"))
         plot(
             fig,
             filename=os.path.join(
-                self.path_processed_data,
+                self.path_issue,
                 "debug_plots",
                 f"Plots_{self.st_rt_no}_{self.dir}.html",
             ),
@@ -591,10 +591,11 @@ class CleanGrade:
         )
         all_fkeys = self.correct_sort_df.fkey.count()
         percent_bad_fkey = 100 * bad_fkeys / all_fkeys
-        assert percent_bad_fkey <= self.tolerance_fkey_misclass_per
+        percent_bad_fkey = np.nan_to_num(percent_bad_fkey)
         print(
             f"fkey in correct sort order. Percent of bad fkeys: " f"{percent_bad_fkey}"
         )
+        assert percent_bad_fkey <= self.tolerance_fkey_misclass_per
 
 
 if __name__ == "__main__":
@@ -606,17 +607,18 @@ if __name__ == "__main__":
 
     # 1.2 Set Global Parameters
     read_shape_file = False
-    path_to_data = r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents" \
-                   r"\freeval_pa\grade_data\June_23_2020"
+    path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\raw"
+    path_interim = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\interim"
     path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
-    path_processed_data = os.path.join(path_to_data, "processed_data")
-    if not os.path.exists(path_processed_data):
-        os.mkdir(path_processed_data)
+    path_processed_data = (
+        r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\processed"
+    )
+    path_issue = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\issues"
 
     read_obj = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
-        path_processed_data=path_processed_data,
+        path_interim=path_interim,
         read_saved_shp_csv=False,
         read_saved_csv=True,
     )
@@ -639,6 +641,7 @@ if __name__ == "__main__":
         sort_order_ne_sw_=sort_order,
         tolerance_fkey_misclass_per_=1,
         path_processed_data_=path_processed_data,
+        path_issue_=path_issue,
     )
     asc_grade_obj.clean_grade_df()
     asc_grade_obj.compute_grade_stats()
@@ -654,6 +657,7 @@ if __name__ == "__main__":
         sort_order_ne_sw_=sort_order,
         tolerance_fkey_misclass_per_=1,
         path_processed_data_=path_processed_data,
+        path_issue_=path_issue,
     )
     desc_grade_obj.clean_grade_df()
     desc_grade_obj.compute_grade_stats()

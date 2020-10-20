@@ -16,18 +16,16 @@ sys.path.append(
 import grade_process_mod as gradepr  # noqa E402
 
 # 1.2 Set Global Parameters
-path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\June_23_2020"
-path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
-path_processed_data = os.path.join(path_to_data, "processed_data")
+path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\raw"
+path_interim = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\interim"
 
 
 if __name__ == "__main__":
-    if not os.path.exists(path_processed_data):
-        os.mkdir(path_processed_data)
+    path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
     read_obj = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
-        path_processed_data=path_processed_data,
+        path_interim=path_interim,
         read_saved_shp_csv=False,
         read_saved_csv=False,
     )
@@ -35,26 +33,29 @@ if __name__ == "__main__":
     read_obj_new = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
-        path_processed_data=path_processed_data,
-        layers_raw_grade_data=["I_376_NB_1_SR422_to_I80_GRADE",
-                                 "I_376_NB_2_I76_to_ConstitutionBlvd_GRADE",
-                                 "I_376_SB_1_I80_to_SR422_GRADE",
-                                 "I_376_SB_2_ConstitutionBlvd_to_I76_GRADE",
-                                 "I_76_NB_1_GRADE",
-                                 "I_76_SB_1_GRADE",
-                                 "PA_581_NB_1_GRADE",
-                                 "PA_581_SB_1_GRADE"],
+        path_interim=path_interim,
+        layers_raw_grade_data=[
+            "MissingSections_GRADE",
+            "I_376_NB_1_SR422_to_I80_GRADE",
+            "I_376_NB_2_I76_to_ConstitutionBlvd_GRADE",
+            "I_376_SB_1_I80_to_SR422_GRADE",
+            "I_376_SB_2_ConstitutionBlvd_to_I76_GRADE",
+            "I_76_NB_1_GRADE",
+            "I_76_SB_1_GRADE",
+            "PA_581_NB_1_GRADE",
+            "PA_581_SB_1_GRADE",
+        ],
         read_saved_shp_csv=False,
         read_saved_csv=False,
     )
     # 2 read data and output smaller subsets
     # -----------------------------------------------------------------------------
-    grade_df_dict = read_obj.data_read_switch()
+    # grade_df_dict = read_obj.data_read_switch()
 
     # Read the new geoprocessing data
     read_obj_new.data_read_switch(
-        grade_gdf_asc_save_loc="grade_gdf_asc_sort_i76_376_pa581",
-        grade_gdf_desc_save_loc="grade_gdf_desc_sort_i76_376_pa581"
+        grade_gdf_asc_save_loc="grade_gdf_asc_sort_i76_376_pa581_plus_missing_data",
+        grade_gdf_desc_save_loc="grade_gdf_desc_sort_i76_376_pa581_plus_missing_data",
     )
 
     grade_df_asc = grade_df_dict["grade_df_asc"]

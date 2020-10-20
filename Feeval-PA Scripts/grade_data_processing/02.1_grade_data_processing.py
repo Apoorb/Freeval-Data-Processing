@@ -40,15 +40,21 @@ if not os.path.exists(path_freeval_grade_dat_desc):
 if __name__ == "__main__":
     # 2 read data and output smaller subsets
     # -----------------------------------------------------------------------------
-    read_obj = gradepr.ReadGrade(
+    path_to_grade_data_file = os.path.join(path_to_data, "NewGeodatabase.gdb")
+    read_obj_new = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
         path_interim=path_interim,
+        layers_raw_grade_data=[],
         read_saved_shp_csv=False,
         read_saved_csv=True,
     )
 
-    grade_df_dict = read_obj.data_read_switch()
+    grade_df_dict = read_obj_new.data_read_switch(
+        grade_gdf_asc_save_loc="grade_gdf_asc_sort_i76_376_pa581_plus_missing_data",
+        grade_gdf_desc_save_loc="grade_gdf_desc_sort_i76_376_pa581_plus_missing_data",
+    )
+
     grade_df_asc = grade_df_dict["grade_df_asc"]
     grade_df_desc = grade_df_dict["grade_df_desc"]
 
@@ -67,7 +73,7 @@ if __name__ == "__main__":
             route=st_rt_no_,
             grade_df_name_="grade_df_asc",
             sort_order_ne_sw_=sort_order,
-            tolerance_fkey_misclass_per_=0,
+            tolerance_fkey_misclass_per_=100,
             path_processed_data_=path_processed_data,
             path_issue_=path_issue,
         )
@@ -76,7 +82,7 @@ if __name__ == "__main__":
         asc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=0)
         dir_1 = asc_grade_obj_dict[st_rt_no_].dir
         path_to_out_file = os.path.join(
-            path_freeval_grade_dat_asc, f"route_{st_rt_no_}_dir_{dir_1}.csv"
+            path_freeval_grade_dat_asc, f"new_route_{st_rt_no_}_dir_{dir_1}.csv"
         )
         asc_grade_obj_dict[st_rt_no_].freeval_seg_grade_class.to_csv(
             path_to_out_file, index=False
@@ -89,7 +95,7 @@ if __name__ == "__main__":
             route=st_rt_no_,
             grade_df_name_="grade_df_desc",
             sort_order_ne_sw_=sort_order,
-            tolerance_fkey_misclass_per_=1,
+            tolerance_fkey_misclass_per_=100,
             path_processed_data_=path_processed_data,
             path_issue_=path_issue,
         )
@@ -98,13 +104,8 @@ if __name__ == "__main__":
         desc_grade_obj_dict[st_rt_no_].plot_grade_profile(elevation_start=0)
         dir_1 = desc_grade_obj_dict[st_rt_no_].dir
         path_to_out_file = os.path.join(
-            path_freeval_grade_dat_desc, f"route_{st_rt_no_}_dir_{dir_1}.csv"
+            path_freeval_grade_dat_desc, f"new_route_{st_rt_no_}_dir_{dir_1}.csv"
         )
         desc_grade_obj_dict[st_rt_no_].freeval_seg_grade_class.to_csv(
             path_to_out_file, index=False
         )
-
-    test = asc_grade_obj_dict[80].correct_sort_df_add_stat.query(
-        "name == 10008030100002"
-    )
-    test.fgrade_impute.describe()

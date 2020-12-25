@@ -36,7 +36,7 @@ if __name__ == "__main__":
     read_obj = gradepr.ReadGrade(
         path_to_data=path_to_data,
         path_to_grade_data_file=path_to_grade_data_file,
-        path_processed_data=path_processed_data,
+        path_interim=path_processed_data,
         read_saved_shp_csv=True,
         read_saved_csv=True,
     )

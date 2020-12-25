@@ -18,11 +18,13 @@ import grade_process_mod as gradepr  # noqa E402
 
 # 1.2 Set Global Parameters
 read_shape_file = False
-path_to_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\raw"
-path_interim = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\interim"
-path_issue = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\issues"
+path_common = r"C:\Users\abibeka\OneDrive - Kittelson & Associates, Inc\Documents" \
+              r"\freeval_pa\grade_data"
+path_to_data = os.path.join(path_common, "raw")
+path_interim = os.path.join(path_common, "interim")
+path_issue = os.path.join(path_common, "issues")
+path_processed_data = os.path.join(path_common, "processed")
 path_to_grade_data_file = os.path.join(path_to_data, "Processing.gdb")
-path_processed_data = r"C:\Users\abibeka\Documents_axb\freeval_pa\grade_data\processed"
 path_freeval_grade_dat = os.path.join(path_processed_data, "freeval_grade_data")
 
 if not os.path.exists(path_freeval_grade_dat):

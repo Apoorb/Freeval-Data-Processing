@@ -227,7 +227,8 @@ class CleanGrade:
             how="inner",
         )
 
-        # Use 0.25 mile, 0.5 mile, and segment level summary statistics to classify segments.
+        # Use 0.25 mile, 0.5 mile, and segment level summary statistics to classify
+        # segments.
         correct_sort_df_add_stat_agg = correct_sort_df_add_stat_agg.assign(
             hcm_grade_cat=lambda df1: np.select(
                 [
@@ -376,12 +377,14 @@ class CleanGrade:
         fig.update_yaxes(title_text="fgrade_impute per 20 ft. (%.)", row=1, col=1)
         fig.update_yaxes(title_text="cum_elevation_relative (ft.)", row=2, col=1)
         fig.update_xaxes(
-            title_text="Pseudo Mileposting---Jumps by 1000 mi whenever freeval name increases by 2 or more.",
+            title_text="Pseudo Mileposting---Jumps by 1000 mi whenever freeval name "
+                       "increases by 2 or more.",
             row=1,
             col=1,
         )
         fig.update_xaxes(
-            title_text="Pseudo Mileposting---Jumps by 1000 mi whenever freeval name increases by 2 or more.",
+            title_text="Pseudo Mileposting---Jumps by 1000 mi whenever freeval name "
+                       "increases by 2 or more.",
             row=2,
             col=1,
         )

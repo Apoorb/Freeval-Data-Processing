@@ -88,8 +88,6 @@ if __name__ == "__main__":
         missing_seg_rows.name.astype(str).str.find("10000083").sum() == 0
     ), "All rows are not from I-83"
 
-    missing_segmentation_rows = test.loc[lambda df: df.rid.isna()]
-
     len(set(freeval_segmentation.rid))
     len(set(grade_df.name))
 
